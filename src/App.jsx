@@ -255,6 +255,24 @@ const NotebookApp = () => {
     }
   }, []);
 
+  // Listen to Firebase whenever sessionCode changes (for User 2 joining)
+  useEffect(() => {
+    if (sessionActive && sessionCode && sessionCode.length === 6) {
+      const sessionRef = ref(database, `sessions/${sessionCode}`);
+      const unsubscribe = onValue(sessionRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          setCurrentQuestionIndex(data.currentQuestionIndex || 0);
+          setAnswered(new Set(data.answered || []));
+          setConfirmedBy(data.confirmedBy || {});
+          setPartnerJoined(data.partnerJoined || false);
+          setUseTimer(data.useTimer || false);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [sessionActive, sessionCode]);
+
   // Save to Firebase
   useEffect(() => {
     if (sessionActive && sessionCode) {
@@ -475,32 +493,31 @@ const NotebookApp = () => {
                 />
               </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={handleCreateSession}
-                  disabled={!userName}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed"
-                >
-                  I'll Start First
-                </button>
-              </div>
+              <button
+                onClick={handleCreateSession}
+                disabled={!userName}
+                className="w-full px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed"
+              >
+                I'll Start First
+              </button>
 
               <div className="text-center text-gray-400 text-sm">or</div>
 
               <div className="bg-slate-700/50 rounded-xl p-4 space-y-4">
+                <p className="text-indigo-200 font-semibold text-center">Join Your Partner's Session</p>
                 <div>
-                  <label className="block text-indigo-200 font-semibold mb-2">Your Name (for your partner to see)</label>
+                  <label className="block text-indigo-200 font-semibold mb-2">Your Name</label>
                   <input
                     type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    placeholder="Enter YOUR name here"
+                    placeholder="Enter your name"
                     className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-indigo-200 font-semibold mb-2">Session Code (from your partner)</label>
+                  <label className="block text-indigo-200 font-semibold mb-2">Session Code</label>
                   <input
                     type="text"
                     value={sessionCode}
