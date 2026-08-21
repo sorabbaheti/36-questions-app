@@ -315,13 +315,29 @@ const NotebookApp = () => {
     });
   };
 
-  const handleJoinSession = () => {
+  const handleJoinSession = async () => {
     localStorage.setItem('36q-session-code', sessionCode);
     localStorage.setItem('36q-user-name', userName);
     localStorage.setItem('36q-user-role', 'joiner');
     setUserRole('joiner');
     setSessionActive(true);
     setPartnerJoined(true);
+    
+    // Load existing session data from Firebase
+    const sessionRef = ref(database, `sessions/${sessionCode}`);
+    try {
+      const snapshot = await get(sessionRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setCurrentQuestionIndex(data.currentQuestionIndex || 0);
+        setAnswered(new Set(data.answered || []));
+        setConfirmedBy(data.confirmedBy || {});
+        setUseTimer(data.useTimer || false);
+      }
+    } catch (error) {
+      console.log('Error loading session:', error);
+    }
+    
     setScreen('question');
   };
 
