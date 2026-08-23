@@ -226,6 +226,8 @@ const NotebookApp = () => {
   const [userRole, setUserRole] = useState(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [partnerJoined, setPartnerJoined] = useState(false);
+  const [creatorName, setCreatorName] = useState('');
+  const [joinerName, setJoinerName] = useState('');
   
   // TIMER STATE
   const [timerActive, setTimerActive] = useState(false);
@@ -249,6 +251,8 @@ const NotebookApp = () => {
           setSessionActive(true);
           setPartnerJoined(data.partnerJoined || false);
           setUseTimer(data.useTimer || false);
+          setCreatorName(data.creator || '');
+          setJoinerName(data.joiner || '');
         }
       });
       return () => unsubscribe();
@@ -267,6 +271,8 @@ const NotebookApp = () => {
           setConfirmedBy(data.confirmedBy || {});
           setPartnerJoined(data.partnerJoined || false);
           setUseTimer(data.useTimer || false);
+          setCreatorName(data.creator || '');
+          setJoinerName(data.joiner || '');
         }
       });
       return () => unsubscribe();
@@ -300,6 +306,7 @@ const NotebookApp = () => {
     localStorage.setItem('36q-user-role', 'creator');
     setSessionCode(code);
     setUserRole('creator');
+    setCreatorName(userName); // Store creator's name
     setSessionActive(true);
     setScreen('question');
     // Create session in Firebase
@@ -322,6 +329,7 @@ const NotebookApp = () => {
     setUserRole('joiner');
     setSessionActive(true);
     setPartnerJoined(true);
+    setJoinerName(userName); // Store joiner's name immediately
     
     // Load existing session data from Firebase
     const sessionRef = ref(database, `sessions/${sessionCode}`);
@@ -333,6 +341,14 @@ const NotebookApp = () => {
         setAnswered(new Set(data.answered || []));
         setConfirmedBy(data.confirmedBy || {});
         setUseTimer(data.useTimer || false);
+        setCreatorName(data.creator || ''); // Load creator's name
+        
+        // Update Firebase with joiner's name
+        set(sessionRef, {
+          ...data,
+          joiner: userName,
+          partnerJoined: true,
+        });
       }
     } catch (error) {
       console.log('Error loading session:', error);
@@ -354,9 +370,12 @@ const NotebookApp = () => {
       newConfirmedBy[questionKey] = [];
     }
     
+    // Use the actual name from Firebase (creatorName or joinerName)
+    const myName = userRole === 'creator' ? creatorName : joinerName;
+    
     // Add current user to confirmed list if not already there
-    if (!newConfirmedBy[questionKey].includes(userName)) {
-      newConfirmedBy[questionKey].push(userName);
+    if (myName && !newConfirmedBy[questionKey].includes(myName)) {
+      newConfirmedBy[questionKey].push(myName);
     }
     
     setConfirmedBy(newConfirmedBy);
@@ -595,7 +614,7 @@ const NotebookApp = () => {
               
               {sessionActive && (
                 <div className="flex justify-center gap-6 text-sm text-gray-400 mb-4">
-                  <div>👤 {userName}</div>
+                  <div>👤 {creatorName} & {joinerName}</div>
                   <div>🔐 {sessionCode}</div>
                 </div>
               )}
@@ -707,6 +726,8 @@ const NotebookApp = () => {
                 const questionKey = `q-${currentQuestionIndex}`;
                 const confirmedNames = confirmedBy[questionKey] || [];
                 const bothConfirmed = confirmedNames.length >= 2;
+                const myName = userRole === 'creator' ? creatorName : joinerName;
+                const partnerName = userRole === 'creator' ? joinerName : creatorName;
                 
                 return (
                   <div className={`rounded-xl p-4 border ${bothConfirmed ? 'bg-green-500/20 border-green-500' : 'bg-amber-500/20 border-amber-500'}`}>
@@ -714,11 +735,11 @@ const NotebookApp = () => {
                       {bothConfirmed ? '✅ Both Answered!' : '⏳ Waiting for Confirmation'}
                     </p>
                     <div className="space-y-2 text-sm">
-                      <div className={`flex items-center gap-2 ${confirmedNames.includes(userName) ? 'text-green-200' : 'text-amber-200'}`}>
-                        {confirmedNames.includes(userName) ? '✓' : '○'} You ({userName})
+                      <div className={`flex items-center gap-2 ${confirmedNames.includes(myName) ? 'text-green-200' : 'text-amber-200'}`}>
+                        {confirmedNames.includes(myName) ? '✓' : '○'} You ({myName})
                       </div>
-                      <div className={`flex items-center gap-2 ${confirmedNames.length >= 2 && !confirmedNames.includes(userName) ? 'text-green-200' : 'text-amber-200'}`}>
-                        {confirmedNames.length >= 2 && !confirmedNames.includes(userName) ? '✓' : '○'} Your Partner
+                      <div className={`flex items-center gap-2 ${confirmedNames.includes(partnerName) ? 'text-green-200' : 'text-amber-200'}`}>
+                        {confirmedNames.includes(partnerName) ? '✓' : '○'} {partnerName || 'Your Partner'}
                       </div>
                     </div>
                     {!bothConfirmed && (
