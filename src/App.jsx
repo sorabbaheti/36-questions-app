@@ -324,45 +324,36 @@ const NotebookApp = () => {
     });
   };
 
-  const handleJoinSession = async () => {
-    // Validate session exists in Firebase
+  const handleJoinSession = () => {
+    localStorage.setItem('36q-session-code', sessionCode);
+    localStorage.setItem('36q-user-name', joinerInputName);
+    localStorage.setItem('36q-user-role', 'joiner');
+    setUserRole('joiner');
+    setSessionActive(true);
+    setPartnerJoined(true);
+    setJoinerName(joinerInputName);
+    
+    // Load session data from Firebase using listener
     const sessionRef = ref(database, `sessions/${sessionCode}`);
-    try {
-      const snapshot = await get(sessionRef);
-      if (!snapshot.exists()) {
-        alert('❌ Session code not found. Please check and try again.');
-        return;
+    onValue(sessionRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setCurrentQuestionIndex(data.currentQuestionIndex || 0);
+        setAnswered(new Set(data.answered || []));
+        setConfirmedBy(data.confirmedBy || {});
+        setUseTimer(data.useTimer || false);
+        setCreatorName(data.creator || '');
+        
+        // Update Firebase with joiner's name
+        set(sessionRef, {
+          ...data,
+          joiner: joinerInputName,
+          partnerJoined: true,
+        });
       }
-      
-      const data = snapshot.val();
-      
-      localStorage.setItem('36q-session-code', sessionCode);
-      localStorage.setItem('36q-user-name', joinerInputName);
-      localStorage.setItem('36q-user-role', 'joiner');
-      setUserRole('joiner');
-      setSessionActive(true);
-      setPartnerJoined(true);
-      setJoinerName(joinerInputName);
-      setCreatorName(data.creator || '');
-      
-      // Load existing session data
-      setCurrentQuestionIndex(data.currentQuestionIndex || 0);
-      setAnswered(new Set(data.answered || []));
-      setConfirmedBy(data.confirmedBy || {});
-      setUseTimer(data.useTimer || false);
-      
-      // Update Firebase with joiner's name
-      set(sessionRef, {
-        ...data,
-        joiner: joinerInputName,
-        partnerJoined: true,
-      });
-      
-      setScreen('question');
-    } catch (error) {
-      console.log('Error loading session:', error);
-      alert('❌ Error loading session. Please try again.');
-    }
+    });
+    
+    setScreen('question');
   };
 
   const currentQuestion = QUESTIONS[currentQuestionIndex];
