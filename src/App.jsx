@@ -223,6 +223,8 @@ const NotebookApp = () => {
   // SESSION STATE
   const [sessionCode, setSessionCode] = useState('');
   const [userName, setUserName] = useState('');
+  const [creatorInputName, setCreatorInputName] = useState(''); // Separate input for "I'll Start First"
+  const [joinerInputName, setJoinerInputName] = useState(''); // Separate input for "Join Session"
   const [userRole, setUserRole] = useState(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [partnerJoined, setPartnerJoined] = useState(false);
@@ -302,17 +304,17 @@ const NotebookApp = () => {
   const handleCreateSession = () => {
     const code = generateSessionCode();
     localStorage.setItem('36q-session-code', code);
-    localStorage.setItem('36q-user-name', userName);
+    localStorage.setItem('36q-user-name', creatorInputName);
     localStorage.setItem('36q-user-role', 'creator');
     setSessionCode(code);
     setUserRole('creator');
-    setCreatorName(userName); // Store creator's name
+    setCreatorName(creatorInputName); // Store creator's name
     setSessionActive(true);
     setScreen('question');
     // Create session in Firebase
     const sessionRef = ref(database, `sessions/${code}`);
     set(sessionRef, {
-      creator: userName,
+      creator: creatorInputName,
       currentQuestionIndex: 0,
       answered: [],
       confirmedBy: {},
@@ -324,12 +326,12 @@ const NotebookApp = () => {
 
   const handleJoinSession = async () => {
     localStorage.setItem('36q-session-code', sessionCode);
-    localStorage.setItem('36q-user-name', userName);
+    localStorage.setItem('36q-user-name', joinerInputName);
     localStorage.setItem('36q-user-role', 'joiner');
     setUserRole('joiner');
     setSessionActive(true);
     setPartnerJoined(true);
-    setJoinerName(userName); // Store joiner's name immediately
+    setJoinerName(joinerInputName); // Store joiner's name immediately
     
     // Load existing session data from Firebase
     const sessionRef = ref(database, `sessions/${sessionCode}`);
@@ -346,7 +348,7 @@ const NotebookApp = () => {
         // Update Firebase with joiner's name
         set(sessionRef, {
           ...data,
-          joiner: userName,
+          joiner: joinerInputName,
           partnerJoined: true,
         });
       }
@@ -521,8 +523,8 @@ const NotebookApp = () => {
                 <label className="block text-indigo-200 font-semibold mb-2">Your Name</label>
                 <input
                   type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
+                  value={creatorInputName}
+                  onChange={(e) => setCreatorInputName(e.target.value)}
                   placeholder="Your name"
                   className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
@@ -530,7 +532,7 @@ const NotebookApp = () => {
 
               <button
                 onClick={handleCreateSession}
-                disabled={!userName}
+                disabled={!creatorInputName}
                 className="w-full px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed"
               >
                 I'll Start First
@@ -544,8 +546,8 @@ const NotebookApp = () => {
                   <label className="block text-indigo-200 font-semibold mb-2">Your Name</label>
                   <input
                     type="text"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
+                    value={joinerInputName}
+                    onChange={(e) => setJoinerInputName(e.target.value)}
                     placeholder="Enter your name"
                     className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
@@ -564,7 +566,7 @@ const NotebookApp = () => {
 
                 <button
                   onClick={handleJoinSession}
-                  disabled={!userName || sessionCode.length !== 6}
+                  disabled={!joinerInputName || sessionCode.length !== 6}
                   className="w-full px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed"
                 >
                   Join Session
