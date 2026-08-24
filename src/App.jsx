@@ -261,7 +261,8 @@ const NotebookApp = () => {
   useEffect(() => {
     if (useTimer) {
       setTimerRemaining(timerDuration);
-      setTimerActive(true);
+      // Show timer but don't auto-start counting
+      setTimerActive(false);
     }
   }, [currentQuestionIndex, useTimer, timerDuration]);
 
@@ -309,8 +310,14 @@ const NotebookApp = () => {
           if (data.confirmedBy) setConfirmedBy(data.confirmedBy);
           if (data.partnerJoined !== undefined) setPartnerJoined(data.partnerJoined);
           if (data.useTimer !== undefined) setUseTimer(data.useTimer);
-          if (data.creator) setCreatorName(data.creator);
-          if (data.joiner) setJoinerName(data.joiner);
+          
+          // Only update partner's name from Firebase, not your own
+          const myRole = localStorage.getItem('36q-user-role');
+          if (myRole === 'creator' && data.joiner) {
+            setJoinerName(data.joiner);
+          } else if (myRole === 'joiner' && data.creator) {
+            setCreatorName(data.creator);
+          }
         }
       });
       return () => unsubscribe();
@@ -411,10 +418,11 @@ const NotebookApp = () => {
     setUserRole('joiner');
     setJoinerName(joinerInputName);
     setTimerRemaining(15 * 60);
+    setRoomName(cleanRoomName);
     
-    // Load existing session from Firebase
+    // Load existing session from Firebase (one-time fetch)
     const sessionRef = ref(database, `sessions/${cleanRoomName}`);
-    const unsubscribe = onValue(sessionRef, (snapshot) => {
+    get(sessionRef).then((snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         setCreatorName(data.creator || '');
@@ -423,23 +431,23 @@ const NotebookApp = () => {
         setConfirmedBy(data.confirmedBy || {});
         setUseTimer(data.useTimer || false);
         setPartnerJoined(true);
+        setSessionActive(true);
         
         // Update Firebase with joiner's name
         update(sessionRef, {
           joiner: joinerInputName,
           partnerJoined: true,
-        });
+        }).catch(err => console.log('Error updating joiner name:', err));
         
-        setRoomName(cleanRoomName);
-        setSessionActive(true);
+        setScreen('question');
       } else {
         alert('❌ Room not found. Please check the room name and try again.');
         setSessionActive(false);
       }
+    }).catch(err => {
+      alert('Error loading session: ' + err.message);
+      setSessionActive(false);
     });
-    
-    setScreen('question');
-    return unsubscribe;
   };
 
   const currentQuestion = QUESTIONS[currentQuestionIndex];
@@ -752,14 +760,20 @@ const NotebookApp = () => {
           {/* Timer */}
           {useTimer && (
             <div className="mb-8">
-              <div className={`rounded-xl p-6 text-center border-2 ${timerRemaining > 60 ? 'border-green-500 bg-green-500/10' : timerRemaining > 10 ? 'border-yellow-500 bg-yellow-500/10' : 'border-red-500 bg-red-500/10 animate-pulse'}`}>
-                <p className="text-sm text-gray-300 mb-2">Time Remaining</p>
-                <div className={`text-4xl font-bold font-mono ${timerRemaining > 60 ? 'text-green-400' : timerRemaining > 10 ? 'text-yellow-400' : 'text-red-500'}`}>
+              <div className={`rounded-xl p-6 text-center border-2 ${!timerActive ? 'border-gray-500 bg-gray-500/10' : timerRemaining > 60 ? 'border-green-500 bg-green-500/10' : timerRemaining > 10 ? 'border-yellow-500 bg-yellow-500/10' : 'border-red-500 bg-red-500/10 animate-pulse'}`}>
+                <p className="text-sm text-gray-300 mb-2">{timerActive ? '⏱️ Time Remaining' : '⏸ Timer Paused'}</p>
+                <div className={`text-4xl font-bold font-mono ${!timerActive ? 'text-gray-400' : timerRemaining > 60 ? 'text-green-400' : timerRemaining > 10 ? 'text-yellow-400' : 'text-red-500'}`}>
                   {formatTime(timerRemaining)}
                 </div>
-                {timerRemaining <= 10 && (
+                {timerRemaining <= 10 && timerActive && (
                   <p className="text-xs text-red-400 mt-2">⏰ Time running out!</p>
                 )}
+                <button
+                  onClick={() => setTimerActive(!timerActive)}
+                  className="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg text-sm transition-all"
+                >
+                  {timerActive ? '⏸ Pause' : '▶ Resume'}
+                </button>
               </div>
             </div>
           )}
@@ -818,17 +832,30 @@ const NotebookApp = () => {
             <div className="bg-blue-500/20 border border-blue-500 rounded-xl p-6 mb-8">
               <p className="text-blue-200 font-semibold mb-3">⏱️ Add a timer?</p>
               <p className="text-blue-100 text-sm mb-4">15 minutes per question to keep things moving and present.</p>
-              <button
-                onClick={() => {
-                  setUseTimer(true);
-                  setTimerActive(true);
-                }}
-                className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-all"
-              >
-                Yes, Start Timer
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setUseTimer(true);
+                    setTimerActive(true);
+                    update(ref(database, `sessions/${roomName}`), { useTimer: true });
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-all"
+                >
+                  Yes, Enable Timer
+                </button>
+                <button
+                  onClick={() => {
+                    // Just skip - don't show this again
+                    setScreen('question');
+                  }}
+                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-all"
+                >
+                  Skip
+                </button>
+              </div>
             </div>
           )}
+
 
           {/* Confirmation Status */}
           {sessionActive && (
