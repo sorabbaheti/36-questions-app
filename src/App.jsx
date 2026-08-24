@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Flame, BookOpen, Check, ChevronRight, ChevronLeft, Clock, Users, Home } from 'lucide-react';
+import { Heart, BookOpen, Check, ChevronLeft, Clock, Users, Home, Copy, Undo2 } from 'lucide-react';
 import { database } from './firebase';
 import { ref, set, get, onValue, update } from 'firebase/database';
 
-// ALL 36 ARTHUR ARON QUESTIONS
+// ============================================================
+// CONTENT
+// ============================================================
+
 const QUESTIONS = [
   { id: 1, text: "Given the choice of anyone in the world, whom would you want as a dinner guest?", phase: 1 },
   { id: 2, text: "Would you like to be famous? In what way?", phase: 1 },
@@ -17,7 +20,7 @@ const QUESTIONS = [
   { id: 10, text: "If you could change anything about the way you were raised, what would it be?", phase: 1 },
   { id: 11, text: "Take four minutes and tell your partner your life story in as much detail as possible.", phase: 1 },
   { id: 12, text: "If you could wake up tomorrow having gained any one quality or ability, what would it be?", phase: 1 },
-  
+
   { id: 13, text: "If a crystal ball could tell you the truth about yourself, your life, the future or anything else, what would you want to know?", phase: 2 },
   { id: 14, text: "Is there something that you've dreamed of doing for a long time? Why haven't you done it?", phase: 2 },
   { id: 15, text: "What is the greatest accomplishment of your life?", phase: 2 },
@@ -30,7 +33,7 @@ const QUESTIONS = [
   { id: 22, text: "Alternate sharing something you consider a positive characteristic of your partner. Share a total of five items.", phase: 2 },
   { id: 23, text: "How close and warm is your family? Do you feel your childhood was happier than most other people's?", phase: 2 },
   { id: 24, text: "How do you feel about your relationship with your mother?", phase: 2 },
-  
+
   { id: 25, text: "Make three true 'we' statements each. For instance, 'We are both in this room feeling...'", phase: 3 },
   { id: 26, text: "Complete this sentence: 'I wish I had someone with whom I could share...'", phase: 3 },
   { id: 27, text: "If you were going to become a close friend with your partner, please share what would be important for them to know.", phase: 3 },
@@ -45,569 +48,422 @@ const QUESTIONS = [
   { id: 36, text: "Share a personal problem and ask your partner's advice on how he or she might handle it. Also, ask your partner to reflect back to you how you seem to be feeling about the problem you have chosen.", phase: 3 },
 ];
 
-// LOCKED REWARDS (Tied to specific questions)
+// Rewards keyed by QUESTION NUMBER (1-based). Shown after that question is completed.
 const REWARDS = {
   3: {
     title: "First Spark",
     activity: "Movie Night - Before Sunrise (1995)",
     description: "Watch a couple walk through Vienna talking about life, love, and dreams. Exactly what you're doing.",
     details: "Set up at home with blankets and tea. Watch together (1.5 hrs), sit 10 min in silence after, then discuss what resonated. Decorate your notebooks with a movie still or inspired drawing.",
-    img: "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?w=400",
     time: "2 hours",
-    icon: "🎬"
+    icon: "🎬",
   },
   6: {
     title: "Growing Close",
     activity: "Create a Couples Playlist (10 Songs)",
     description: "Each pick 5 songs that remind you of them. Listen together. Write down why each song matters.",
     details: "Sit together, each independently pick 5 songs that remind you of them or express how you feel. Present them one by one, play 30 sec each, explain why. Listen to all 10 together. Write in your notebooks: 'Our 10 Songs' with the stories.",
-    img: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400",
     time: "1.5-2 hours",
-    icon: "🎵"
+    icon: "🎵",
   },
   11: {
     title: "Mystery Gift",
     activity: "Exchange Mystery Gifts (₹500)",
     description: "Pick something small, personal, mysterious. Wrap it. Exchange with no hints. Open together and share why you chose it.",
-    details: "Each of you secretly buys something for the other (budget: ₹500 max). It can be anything: a book that reminds you of them, a candle with their favorite scent, a small item from a place you both love, something useful they need, a funny token, anything. Wrap it thoughtfully. Pick a cozy moment (tea time, evening). Sit together, exchange gifts without revealing why. Open slowly. Share the story: why you chose this, what it means, what you hope it reminds them of. Take a photo of both gifts together for your notebooks with the story written next to it.",
-    img: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400",
+    details: "Each of you secretly buys something for the other (budget: ₹500 max). Wrap it thoughtfully. Pick a cozy moment, exchange without revealing why, open slowly, and share the story behind your choice. Photograph both gifts together for your notebooks with the story written next to it.",
     time: "30-45 minutes",
-    icon: "🎁"
+    icon: "🎁",
   },
   17: {
     title: "Deep Conversations",
     activity: "Board Game Night (Candlelit)",
-    description: "Set up the intimate space with candles and soft music. Play your favorite board game together.",
-    details: "Setup: Private room, dim lights completely, light 3-4 candles, soft instrumental music playing quietly, tea/coffee nearby, comfortable seating. Then: Choose a board game you both enjoy (Scrabble, Chess, Monopoly, Ludo, any game). Play for 2-3 hours in this candlelit setting. Compete, laugh, have fun. No pressure. Just playful connection. The atmosphere makes it intimate even though you're playing a game. Take photos, paste in notebooks with notes about who won and what made you laugh.",
-    img: "https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=400",
+    description: "Set up an intimate space with candles and soft music. Play your favorite board game together.",
+    details: "Dim the lights, light a few candles, put on soft instrumental music, keep tea nearby. Choose a game you both enjoy and play for 2-3 hours. No pressure, just playful connection. Take photos for your notebooks with notes about who won and what made you laugh.",
     time: "2-3 hours",
-    icon: "🎲"
+    icon: "🎲",
   },
   22: {
     title: "Creating Together",
     activity: "Creative Photo Shoot - Dress Up & Play",
-    description: "Dress up. Go outdoors. Create fun, playful, ridiculous photos together. Superhero poses, jumping, running, anything creative.",
-    details: "Dress up however makes you feel awesome (matching outfits, costumes, formal wear, whatever). Pick an outdoor location with good backdrops that you love. Get creative with poses: superhero landings, jumping mid-air, running, dancing, sitting on shoulders, piggyback rides, pretend to be models, do silly faces, create action shots. Have FUN. No poses need to be perfect or flattering—the goal is laughter and playfulness. Take 50+ photos. Pick your 5-10 favorites (include the silly ones!). Paste in notebooks with captions: 'We were ridiculous and loved it' or jokes about the photos.",
-    img: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400",
+    description: "Dress up. Go outdoors. Create fun, playful, ridiculous photos together.",
+    details: "Dress however makes you feel awesome. Pick an outdoor spot you love. Get creative with poses — jumping, running, silly faces, action shots. The goal is laughter, not perfection. Take 50+ photos, pick your favorites (keep the silly ones!), and paste them in your notebooks with captions.",
     time: "2-3 hours",
-    icon: "📸"
+    icon: "📸",
   },
   24: {
     title: "Opening Up",
     activity: "Sunset from Your Rooftop (No Phones)",
     description: "Watch the sky change colors. No distractions. Just you, each other, and the quiet.",
-    details: "Go to rooftop 30 min before sunset. Sit side by side (not facing). Watch the colors: orange → pink → purple → dark. Feel the temperature drop. After sunset, sit 5 more minutes in silence. Then discuss: What did you notice? How did it feel? Take 1-2 photos for your notebooks.",
-    img: "https://images.unsplash.com/photo-1495573513697-74d440642117?w=400",
+    details: "Go up 30 min before sunset. Sit side by side and watch the colors shift. After sunset, sit 5 more minutes in silence, then share what you noticed and how it felt. Take a photo or two for your notebooks.",
     time: "1 hour",
-    icon: "🌅"
+    icon: "🌅",
   },
   28: {
     title: "Visualize Together",
     activity: "Create a Couple Vision Board",
-    description: "Cut out images, words, dreams. Glue together. Visualize your future on paper. Hang it daily.",
-    details: "Brainstorm future together (30 min): home, travel, activities, dreams, lifestyle. Gather images from magazines/internet (1 hr). Create on poster board: arrange images before gluing, add words/quotes, leave white space, display daily.",
-    img: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400",
+    description: "Cut out images, words, dreams. Glue together. Visualize your future on paper.",
+    details: "Brainstorm your future together (home, travel, dreams, lifestyle). Gather images, arrange them on a poster board, add words and quotes, and display it somewhere you'll see it daily.",
     time: "3-4 hours",
-    icon: "🎨"
+    icon: "🎨",
   },
   36: {
     title: "Completely Connected",
     activity: "Book Your Weekend Getaway",
-    description: "Celebrate completing all 36 questions. A weekend away. Just you two. Victory lap.",
-    details: "Choose any destination you both want to visit. Book a place you love. Spend time away: explore together, have special meals, sleep in, stay present with each other. Collect memories: photos, tickets, receipts. Write in your notebooks about the getaway.",
-    img: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400",
+    description: "Celebrate completing all 36 questions. A weekend away. Just you two.",
+    details: "Choose any destination you both want to visit and book it. Explore together, have special meals, stay present with each other. Collect photos and mementos, and write about the getaway in your notebooks.",
     time: "Weekend getaway",
-    icon: "🏨"
-  }
+    icon: "🏨",
+  },
 };
 
-// INSPIRATION VISUALS BY PHASE (Built-in SVG/Graphics)
-const PHASE_VISUALS = {
-  1: [
-    { emoji: "🌱", title: "New Beginning", color: "from-green-400 to-green-600" },
-    { emoji: "💫", title: "Connection", color: "from-blue-400 to-blue-600" },
-    { emoji: "🤝", title: "Together", color: "from-purple-400 to-purple-600" },
-  ],
-  2: [
-    { emoji: "🌊", title: "Going Deeper", color: "from-indigo-400 to-indigo-600" },
-    { emoji: "🔥", title: "Passion", color: "from-orange-400 to-orange-600" },
-    { emoji: "💭", title: "Thoughts", color: "from-pink-400 to-pink-600" },
-  ],
-  3: [
-    { emoji: "💞", title: "Love", color: "from-rose-400 to-rose-600" },
-    { emoji: "🌟", title: "Shine", color: "from-yellow-400 to-yellow-600" },
-    { emoji: "♾️", title: "Forever", color: "from-red-400 to-red-600" },
-  ],
+const PHASE_META = {
+  1: { emoji: "🌱", label: "Light", color: "text-emerald-400" },
+  2: { emoji: "💫", label: "Deeper", color: "text-indigo-300" },
+  3: { emoji: "🔥", label: "Deepest", color: "text-rose-400" },
 };
+
+// ============================================================
+// SMALL COMPONENTS
+// ============================================================
 
 const Confetti = ({ isActive }) => {
-  const confetti = Array.from({ length: 30 }).map((_, i) => ({
+  if (!isActive) return null;
+  const pieces = Array.from({ length: 30 }).map((_, i) => ({
     id: i,
     left: Math.random() * 100,
     delay: Math.random() * 0.5,
+    emoji: Math.random() > 0.5 ? '💗' : '✨',
   }));
-
-  if (!isActive) return null;
-
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {confetti.map(item => (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
+      {pieces.map(p => (
         <div
-          key={item.id}
-          className="absolute w-2 h-2"
+          key={p.id}
+          className="absolute text-lg"
           style={{
-            left: `${item.left}%`,
-            top: '-10px',
-            animation: `fall ${2 + Math.random() * 1}s linear forwards`,
-            animationDelay: `${item.delay}s`,
-            backgroundColor: ['#ec4899', '#f87171', '#fbbf24', '#60a5fa', '#8b5cf6'][Math.floor(Math.random() * 5)],
-            borderRadius: '50%',
+            left: `${p.left}%`,
+            top: '-20px',
+            animation: `fall ${2 + Math.random()}s linear forwards`,
+            animationDelay: `${p.delay}s`,
           }}
         >
-          {Math.random() > 0.5 ? '💗' : '✨'}
+          {p.emoji}
         </div>
       ))}
-      <style>{`
-        @keyframes fall {
-          to {
-            transform: translateY(100vh) rotate(360deg);
-            opacity: 0;
-          }
-        }
-      `}</style>
+      <style>{`@keyframes fall { to { transform: translateY(100vh) rotate(360deg); opacity: 0; } }`}</style>
     </div>
   );
 };
 
-const Timer = ({ duration, onComplete }) => {
-  const [timeLeft, setTimeLeft] = useState(duration);
+// ============================================================
+// MAIN APP
+// ============================================================
 
-  useEffect(() => {
-    if (timeLeft <= 0) {
-      onComplete();
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, onComplete]);
-
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-
-  return (
-    <div className={`text-center py-4 rounded-lg ${timeLeft <= 10 ? 'bg-red-500/30 border border-red-500' : 'bg-blue-500/20 border border-blue-500'}`}>
-      <div className="flex items-center justify-center gap-2 mb-2">
-        <Clock className="w-5 h-5 text-white" />
-        <p className="text-white font-semibold">Time to answer:</p>
-      </div>
-      <p className={`text-4xl font-bold tabular-nums ${timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
-        {minutes}:{seconds.toString().padStart(2, '0')}
-      </p>
-    </div>
-  );
-};
+const STORAGE = { room: '36q-room', role: '36q-role', name: '36q-name' };
+const TOTAL = QUESTIONS.length;
 
 const NotebookApp = () => {
-  // CORE STATE
-  const [screen, setScreen] = useState('intro');
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answered, setAnswered] = useState(new Set());
-  const [confirmedBy, setConfirmedBy] = useState({}); // Track who confirmed each question
-  const [showReward, setShowReward] = useState(null);
-  const [showConfetti, setShowConfetti] = useState(false);
-  
-  // SESSION STATE
-  const [creatorRoomName, setCreatorRoomName] = useState('');
-  const [joinerRoomName, setJoinerRoomName] = useState('');
-  const [roomName, setRoomName] = useState('');
-  const [userName, setUserName] = useState('');
-  const [creatorInputName, setCreatorInputName] = useState(''); // Separate input for "I'll Start First"
-  const [joinerInputName, setJoinerInputName] = useState(''); // Separate input for "Join Session"
-  const [userRole, setUserRole] = useState(null);
-  const [sessionActive, setSessionActive] = useState(false);
-  const [partnerJoined, setPartnerJoined] = useState(false);
-  const [creatorName, setCreatorName] = useState('');
-  const [joinerName, setJoinerName] = useState('');
-  
-  // TIMER STATE
-  const [timerActive, setTimerActive] = useState(false);
-  const [useTimer, setUseTimer] = useState(false);
-  const [timerDuration] = useState(15 * 60); // 15 minutes in seconds
-  const [timerRemaining, setTimerRemaining] = useState(15 * 60);
+  // --- Identity: who am I, in which room. The only truly local state. ---
+  const [identity, setIdentity] = useState(null); // { room, role: 'creator'|'joiner', name }
+
+  // --- Session: a live MIRROR of Firebase. Single source of truth. ---
+  const [session, setSession] = useState(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
 
-  // Timer countdown effect
+  // --- Intro form state (kept fully separate for create vs join) ---
+  const [createName, setCreateName] = useState('');
+  const [createRoom, setCreateRoom] = useState('');
+  const [joinName, setJoinName] = useState('');
+  const [joinRoom, setJoinRoom] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  // --- Local-only UI state ---
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // --- Timer (local convenience; whether it's enabled is shared) ---
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerRemaining, setTimerRemaining] = useState(15 * 60);
+
+  // ----------------------------------------------------------
+  // 1. Resume identity on mount
+  // ----------------------------------------------------------
+  useEffect(() => {
+    const room = localStorage.getItem(STORAGE.room);
+    const role = localStorage.getItem(STORAGE.role);
+    const name = localStorage.getItem(STORAGE.name);
+    if (room && role) setIdentity({ room, role, name: name || '' });
+  }, []);
+
+  // ----------------------------------------------------------
+  // 2. THE ONE listener. Whenever identity.room changes, subscribe.
+  //    Everything about game state flows through here.
+  // ----------------------------------------------------------
+  useEffect(() => {
+    if (!identity?.room) {
+      setSession(null);
+      setSessionLoaded(false);
+      return;
+    }
+    setSessionLoaded(false);
+    const sref = ref(database, `sessions/${identity.room}`);
+    const unsub = onValue(sref, (snap) => {
+      setSession(snap.exists() ? snap.val() : null);
+      setSessionLoaded(true);
+    });
+    return () => unsub();
+  }, [identity?.room]);
+
+  // ----------------------------------------------------------
+  // Derived values (recomputed each render — never stored, never stale)
+  // ----------------------------------------------------------
+  const inSession = !!identity && !!session;
+  const myRole = identity?.role;
+  const partnerRole = myRole === 'creator' ? 'joiner' : 'creator';
+  const myName = identity?.name || 'You';
+  const creatorName = session?.creator || '';
+  const joinerName = session?.joiner || '';
+  const partnerName = (myRole === 'creator' ? joinerName : creatorName) || 'Partner';
+  const partnerPresent = !!creatorName && !!joinerName;
+
+  const current = session?.current ?? 0;
+  const progress = session?.progress || {};
+  const qProgress = progress[current] || {};
+  const iAmDone = !!qProgress[myRole];
+  const partnerDone = !!qProgress[partnerRole];
+  const bothDone = iAmDone && partnerDone;
+  const useTimer = !!session?.useTimer;
+  const rewardAt = session?.rewardAt || null;
+
+  const completedCount = Object.values(progress).filter(p => p && p.creator && p.joiner).length;
+  const currentQuestion = QUESTIONS[current];
+
+  // ----------------------------------------------------------
+  // Timer: reset to 15:00 (paused) each time the question changes
+  // ----------------------------------------------------------
+  useEffect(() => {
+    setTimerRemaining(15 * 60);
+    setTimerActive(false);
+  }, [current, useTimer]);
+
   useEffect(() => {
     if (!useTimer || !timerActive) return;
-
-    const interval = setInterval(() => {
-      setTimerRemaining((prev) => {
-        if (prev <= 1) {
-          setTimerActive(false);
-          return timerDuration;
-        }
+    const iv = setInterval(() => {
+      setTimerRemaining(prev => {
+        if (prev <= 1) { setTimerActive(false); return 0; }
         return prev - 1;
       });
     }, 1000);
+    return () => clearInterval(iv);
+  }, [useTimer, timerActive]);
 
-    return () => clearInterval(interval);
-  }, [useTimer, timerActive, timerDuration]);
+  const fmt = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
-  // Reset timer when moving to new question
-  useEffect(() => {
-    if (useTimer) {
-      setTimerRemaining(timerDuration);
-      // Show timer but don't auto-start counting
-      setTimerActive(false);
-    }
-  }, [currentQuestionIndex, useTimer, timerDuration]);
+  // ----------------------------------------------------------
+  // ACTIONS — every one writes to Firebase; the listener echoes it
+  // back into React state identically for both people.
+  // ----------------------------------------------------------
+  const cleanRoom = (s) => s.toLowerCase().trim().replace(/\s+/g, '-');
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  // Load from Firebase on mount
-  useEffect(() => {
-    const roomNameLocal = localStorage.getItem('36q-room-name');
-    if (roomNameLocal) {
-      setRoomName(roomNameLocal);
-      const sessionRef = ref(database, `sessions/${roomNameLocal}`);
-      const unsubscribe = onValue(sessionRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          setCurrentQuestionIndex(data.currentQuestionIndex || 0);
-          setAnswered(new Set(data.answered || []));
-          setConfirmedBy(data.confirmedBy || {});
-          setUserName(localStorage.getItem('36q-user-name') || '');
-          setUserRole(localStorage.getItem('36q-user-role') || null);
-          setSessionActive(true);
-          setPartnerJoined(data.partnerJoined || false);
-          setUseTimer(data.useTimer || false);
-          setCreatorName(data.creator || '');
-          setJoinerName(data.joiner || '');
-        }
+  const createSession = async () => {
+    const room = cleanRoom(createRoom);
+    const name = createName.trim();
+    if (!name || !room) return;
+    setBusy(true);
+    try {
+      // Fresh session. progress is empty — every question starts clean.
+      await set(ref(database, `sessions/${room}`), {
+        creator: name,
+        joiner: '',
+        current: 0,
+        progress: {},
+        useTimer: false,
+        rewardAt: null,
+        createdAt: new Date().toISOString(),
       });
-      return () => unsubscribe();
+      localStorage.setItem(STORAGE.room, room);
+      localStorage.setItem(STORAGE.role, 'creator');
+      localStorage.setItem(STORAGE.name, name);
+      setIdentity({ room, role: 'creator', name });
+    } catch (e) {
+      setJoinError('Could not create the room. Please try again.');
+    } finally {
+      setBusy(false);
     }
-  }, []);
-
-  // Listen to confirmations from Firebase in real-time
-  useEffect(() => {
-    if (sessionActive && roomName) {
-      const sessionRef = ref(database, `sessions/${roomName}`);
-      const unsubscribe = onValue(sessionRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          // Update all fields from Firebase
-          if (data.currentQuestionIndex !== undefined) setCurrentQuestionIndex(data.currentQuestionIndex);
-          if (data.answered) setAnswered(new Set(data.answered));
-          if (data.confirmedBy) setConfirmedBy(data.confirmedBy);
-          if (data.partnerJoined !== undefined) setPartnerJoined(data.partnerJoined);
-          if (data.useTimer !== undefined) setUseTimer(data.useTimer);
-          
-          // Only update partner's name from Firebase, not your own
-          const myRole = localStorage.getItem('36q-user-role');
-          if (myRole === 'creator' && data.joiner) {
-            setJoinerName(data.joiner);
-          } else if (myRole === 'joiner' && data.creator) {
-            setCreatorName(data.creator);
-          }
-        }
-      });
-      return () => unsubscribe();
-    }
-  }, [sessionActive, roomName]);
-
-  // Save to Firebase
-  useEffect(() => {
-    if (sessionActive && roomName) {
-      const data = {
-        currentQuestionIndex,
-        answered: Array.from(answered),
-        confirmedBy,
-        partnerJoined,
-        useTimer,
-        updatedAt: new Date().toISOString(),
-      };
-      const sessionRef = ref(database, `sessions/${roomName}`);
-      update(sessionRef, data).catch(err => console.log('Save error:', err));
-    }
-  }, [currentQuestionIndex, answered, confirmedBy, sessionActive, roomName, partnerJoined, useTimer]);
-
-  const generateSessionCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  const handleCreateSession = () => {
-    if (!creatorRoomName.trim()) {
-      alert('Please enter a room name');
-      return;
-    }
-    
-    const cleanRoomName = creatorRoomName.toLowerCase().trim();
-    
-    // Disable old session first
-    setSessionActive(false);
-    
-    // Create fresh session in Firebase FIRST (before changing state)
-    const sessionRef = ref(database, `sessions/${cleanRoomName}`);
-    set(sessionRef, {
-      creator: creatorInputName,
-      currentQuestionIndex: 0,
-      answered: [],
-      confirmedBy: {},
-      partnerJoined: false,
-      useTimer: false,
-      createdAt: new Date().toISOString(),
-    }).then(() => {
-      // Only update state AFTER Firebase write completes
-      localStorage.removeItem('36q-room-name');
-      localStorage.removeItem('36q-user-name');
-      localStorage.removeItem('36q-user-role');
-      
-      setCurrentQuestionIndex(0);
-      setAnswered(new Set());
-      setConfirmedBy({});
-      setJoinerName('');
-      setPartnerJoined(false);
-      setUseTimer(false);
-      setTimerRemaining(15 * 60);
-      
-      localStorage.setItem('36q-room-name', cleanRoomName);
-      localStorage.setItem('36q-user-name', creatorInputName);
-      localStorage.setItem('36q-user-role', 'creator');
-      
-      setRoomName(cleanRoomName);
-      setUserRole('creator');
-      setCreatorName(creatorInputName);
-      setSessionActive(true);
-      setScreen('question');
-    }).catch(err => {
-      alert('Error creating session: ' + err.message);
-    });
-  };
-
-  const handleJoinSession = () => {
-    if (!joinerRoomName.trim()) {
-      alert('Please enter the room name');
-      return;
-    }
-    
-    const cleanRoomName = joinerRoomName.toLowerCase().trim();
-
-    // Disable old session first
-    setSessionActive(false);
-    
-    localStorage.setItem('36q-room-name', cleanRoomName);
-    localStorage.setItem('36q-user-name', joinerInputName);
-    localStorage.setItem('36q-user-role', 'joiner');
-    
-    // Clear old state
-    setCurrentQuestionIndex(0);
-    setAnswered(new Set());
-    setConfirmedBy({});
-    setPartnerJoined(false);
-    setUseTimer(false);
-    
-    setUserRole('joiner');
-    setJoinerName(joinerInputName);
-    setTimerRemaining(15 * 60);
-    setRoomName(cleanRoomName);
-    
-    // Load existing session from Firebase (one-time fetch)
-    const sessionRef = ref(database, `sessions/${cleanRoomName}`);
-    get(sessionRef).then((snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        setCreatorName(data.creator || '');
-        setCurrentQuestionIndex(data.currentQuestionIndex || 0);
-        setAnswered(new Set(data.answered || []));
-        setConfirmedBy(data.confirmedBy || {});
-        setUseTimer(data.useTimer || false);
-        setPartnerJoined(true);
-        setSessionActive(true);
-        
-        // Update Firebase with joiner's name
-        update(sessionRef, {
-          joiner: joinerInputName,
-          partnerJoined: true,
-        }).catch(err => console.log('Error updating joiner name:', err));
-        
-        setScreen('question');
-      } else {
-        alert('❌ Room not found. Please check the room name and try again.');
-        setSessionActive(false);
+  const joinSession = async () => {
+    const room = cleanRoom(joinRoom);
+    const name = joinName.trim();
+    if (!name || !room) return;
+    setBusy(true);
+    setJoinError('');
+    try {
+      const snap = await get(ref(database, `sessions/${room}`));
+      if (!snap.exists()) {
+        setJoinError(`No room called "${room}" yet. Ask your partner for the exact room name, or create it.`);
+        setBusy(false);
+        return;
       }
-    }).catch(err => {
-      alert('Error loading session: ' + err.message);
-      setSessionActive(false);
+      await update(ref(database, `sessions/${room}`), { joiner: name });
+      localStorage.setItem(STORAGE.room, room);
+      localStorage.setItem(STORAGE.role, 'joiner');
+      localStorage.setItem(STORAGE.name, name);
+      setIdentity({ room, role: 'joiner', name });
+    } catch (e) {
+      setJoinError('Could not join the room. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleMyDone = () => {
+    if (!inSession) return;
+    // Write ONLY my own flag for THIS question. Never touch partner's.
+    update(ref(database, `sessions/${identity.room}/progress/${current}`), {
+      [myRole]: !iAmDone,
     });
   };
 
-  const currentQuestion = QUESTIONS[currentQuestionIndex];
-  const progressPercent = (answered.size / QUESTIONS.length) * 100;
-  const affectionLevel = Math.floor((answered.size / QUESTIONS.length) * 100);
-
-  const handleAnswered = () => {
-    const questionKey = `q-${currentQuestionIndex}`;
-    const myRole = localStorage.getItem('36q-user-role') || 'creator';
-    
-    // Build updated confirmed list
-    const confirmedRoles = confirmedBy[questionKey] || [];
-    if (!confirmedRoles.includes(myRole)) {
-      confirmedRoles.push(myRole);
-    }
-    
-    const newConfirmedBy = { ...confirmedBy, [questionKey]: confirmedRoles };
-    setConfirmedBy(newConfirmedBy);
-    
-    // Save to Firebase
-    if (sessionActive && roomName) {
-      const sessionRef = ref(database, `sessions/${roomName}`);
-      update(sessionRef, { confirmedBy: newConfirmedBy }).catch(err => {
-        console.log('Error:', err);
-        alert('Failed to sync. Please try again.');
-      });
-    }
-  };
-
-  const handleNextQuestion = () => {
-    const questionKey = `q-${currentQuestionIndex}`;
-    const confirmedList = confirmedBy[questionKey] || [];
-    
-    // Check if both have confirmed
-    if (confirmedList.length < 2) {
-      alert('Both partners need to click "I\'m Done" first');
-      return;
-    }
-
-    // Mark as answered
-    const newAnswered = new Set(answered);
-    newAnswered.add(currentQuestionIndex);
-    setAnswered(newAnswered);
-
-    // Check if this question has a reward
-    const questionNumber = currentQuestionIndex + 1;
-    if (REWARDS[questionNumber]) {
-      setShowReward(REWARDS[questionNumber]);
+  const goNext = () => {
+    if (!bothDone) return;
+    const qNum = current + 1; // question number just completed
+    const nextIndex = current + 1;
+    const patch = { current: nextIndex };
+    if (REWARDS[qNum]) {
+      patch.rewardAt = qNum;        // both phones will show the reward
       setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 2000);
-      setScreen('reward');
-      return;
+      setTimeout(() => setShowConfetti(false), 2500);
     }
+    update(ref(database, `sessions/${identity.room}`), patch);
+  };
 
-    // Move to next question or complete
-    if (currentQuestionIndex < QUESTIONS.length - 1) {
-      const newConfirmedBy = { ...confirmedBy };
-      delete newConfirmedBy[questionKey];
-      setConfirmedBy(newConfirmedBy);
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      
-      // Save cleaned confirmedBy to Firebase so both users see it
-      if (sessionActive && roomName) {
-        const sessionRef = ref(database, `sessions/${roomName}`);
-        update(sessionRef, { 
-          confirmedBy: newConfirmedBy,
-          currentQuestionIndex: currentQuestionIndex + 1
-        }).catch(err => console.log('Error:', err));
-      }
-      
-      setScreen('question');
-    } else {
-      setScreen('complete');
+  const dismissReward = () => {
+    update(ref(database, `sessions/${identity.room}`), { rewardAt: null });
+  };
+
+  const goPrevious = () => {
+    if (current <= 0) return;
+    update(ref(database, `sessions/${identity.room}`), { current: current - 1 });
+  };
+
+  const enableTimer = () => {
+    update(ref(database, `sessions/${identity.room}`), { useTimer: true });
+  };
+  const disableTimer = () => {
+    update(ref(database, `sessions/${identity.room}`), { useTimer: false });
+  };
+
+  const startOver = () => {
+    update(ref(database, `sessions/${identity.room}`), {
+      current: 0, progress: {}, rewardAt: null,
+    });
+  };
+
+  const leave = () => {
+    localStorage.removeItem(STORAGE.room);
+    localStorage.removeItem(STORAGE.role);
+    localStorage.removeItem(STORAGE.name);
+    setIdentity(null);
+    setSession(null);
+  };
+
+  const copyRoom = () => {
+    if (identity?.room) {
+      navigator.clipboard?.writeText(identity.room).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }).catch(() => {});
     }
   };
 
-  // INTRO SCREEN
-  if (screen === 'intro') {
+  // ==========================================================
+  // SCREEN ROUTING (mostly derived from shared state)
+  // ==========================================================
+
+  // Connecting: identity set but Firebase hasn't answered yet
+  if (identity && !sessionLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-300">Connecting to your room…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Identity set but room no longer exists (deleted / typo)
+  if (identity && sessionLoaded && !session) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-slate-800/60 border border-slate-600 rounded-2xl p-8 max-w-sm text-center">
+          <p className="text-white font-semibold mb-2">This room isn't available anymore.</p>
+          <p className="text-gray-400 text-sm mb-6">It may have been reset. You can go back and start or join a room.</p>
+          <button onClick={leave} className="w-full px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl">
+            Back to start
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- INTRO ----------
+  if (!inSession) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-4">
               <Heart className="w-8 h-8 text-rose-500 animate-pulse" />
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-rose-400 to-pink-500 bg-clip-text text-transparent">36 Questions</h1>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-rose-400 to-pink-500 bg-clip-text text-transparent">36 Questions</h1>
               <Heart className="w-8 h-8 text-rose-500 animate-pulse" />
             </div>
-            <p className="text-gray-300 text-xl">A handwritten journey into intimacy</p>
+            <p className="text-gray-300 text-lg md:text-xl">A handwritten journey into intimacy</p>
           </div>
 
           {/* The Story */}
-          <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/30 border border-slate-600 rounded-2xl p-8 mb-8 backdrop-blur space-y-6">
+          <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/30 border border-slate-600 rounded-2xl p-6 md:p-8 mb-8 backdrop-blur space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-white mb-3">🔬 The Science</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-3">🔬 The Science</h2>
               <p className="text-gray-300 leading-relaxed">
-                In 1997, psychologist <strong>Arthur Aron</strong> conducted a groundbreaking study on building interpersonal closeness. He discovered something remarkable: <strong>vulnerability builds connection faster than time ever could.</strong>
+                In 1997, psychologist <strong>Arthur Aron</strong> studied how to build closeness between people. He found something remarkable: <strong>vulnerability builds connection faster than time ever could.</strong>
               </p>
             </div>
-
             <div>
-              <h2 className="text-2xl font-bold text-white mb-3">📋 The Experiment</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-3">📋 The Experiment</h2>
               <p className="text-gray-300 leading-relaxed">
-                Aron brought together pairs of complete strangers and had them ask each other 36 increasingly personal questions. After 45 minutes of conversation, the emotional connection between strangers rivaled that of friends who'd known each other for years.
-              </p>
-              <p className="text-gray-300 leading-relaxed mt-3">
-                The magic wasn't in the questions themselves—it was in the <strong>mutual vulnerability</strong> and <strong>structured honesty</strong> they created.
+                Aron paired complete strangers and had them ask each other 36 increasingly personal questions. After 45 minutes, the connection between strangers rivaled friendships built over years. The magic was in the <strong>mutual vulnerability</strong> the questions created.
               </p>
             </div>
-
             <div>
-              <h2 className="text-2xl font-bold text-white mb-3">💕 For Couples</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-3">💕 For Couples</h2>
               <p className="text-gray-300 leading-relaxed">
-                If these questions can build intimacy between strangers in 45 minutes, imagine what they can do for a couple who already loves each other. This isn't a quiz. It's not about "winning." <strong>It's about being truly seen.</strong>
+                If these questions build intimacy between strangers in 45 minutes, imagine what they do for a couple who already loves each other. This isn't a quiz. <strong>It's about being truly seen.</strong>
               </p>
             </div>
-
             <div>
-              <h2 className="text-2xl font-bold text-white mb-3">🗺️ The Three Phases</h2>
-              <ul className="text-gray-300 space-y-2 ml-4">
-                <li className="flex gap-2"><span>🌱</span> <span><strong>Phase 1 (Light):</strong> Getting to know each other's values, dreams, and everyday life</span></li>
-                <li className="flex gap-2"><span>💫</span> <span><strong>Phase 2 (Deeper):</strong> Exploring memories, accomplishments, fears, and what matters most</span></li>
-                <li className="flex gap-2"><span>🔥</span> <span><strong>Phase 3 (Deepest):</strong> Complete vulnerability about your future, your past, and your deepest truths</span></li>
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-3">🗺️ The Three Phases</h2>
+              <ul className="text-gray-300 space-y-2 ml-1">
+                <li className="flex gap-2"><span>🌱</span><span><strong>Light:</strong> values, dreams, everyday life</span></li>
+                <li className="flex gap-2"><span>💫</span><span><strong>Deeper:</strong> memories, fears, what matters most</span></li>
+                <li className="flex gap-2"><span>🔥</span><span><strong>Deepest:</strong> your future, your past, your deepest truths</span></li>
               </ul>
             </div>
-
             <div>
-              <h2 className="text-2xl font-bold text-white mb-3">📓 How This Works</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-3">📓 How It Works</h2>
               <p className="text-gray-300 leading-relaxed mb-3">
-                <strong>Each of you has your own notebook.</strong> You'll write answers by hand. Decorate with photos. Sketches. Notes. Over 36 conversations, your notebooks become a visual record of your journey into each other.
+                <strong>Each of you keeps your own notebook.</strong> You'll write answers by hand and decorate the pages. This app just keeps you in sync and unlocks milestone activities along the way.
               </p>
-              <ol className="text-gray-300 space-y-2 ml-4">
-                <li className="flex gap-2"><span>1️⃣</span> <span>See the question here</span></li>
-                <li className="flex gap-2"><span>2️⃣</span> <span>Write your answer in your notebook</span></li>
-                <li className="flex gap-2"><span>3️⃣</span> <span>Partner writes their answer</span></li>
-                <li className="flex gap-2"><span>4️⃣</span> <span>Both click "I'm Done" to unlock the next question</span></li>
-                <li className="flex gap-2"><span>5️⃣</span> <span>Unlock and do the reward activity together</span></li>
-                <li className="flex gap-2"><span>6️⃣</span> <span>Decorate notebooks with photos & memories</span></li>
+              <ol className="text-gray-300 space-y-2 ml-1">
+                <li className="flex gap-2"><span>1️⃣</span><span>See the question here</span></li>
+                <li className="flex gap-2"><span>2️⃣</span><span>Each of you writes your answer</span></li>
+                <li className="flex gap-2"><span>3️⃣</span><span>Both tap "I'm done"</span></li>
+                <li className="flex gap-2"><span>4️⃣</span><span>Move to the next question together</span></li>
+                <li className="flex gap-2"><span>5️⃣</span><span>Do the milestone activities when they unlock</span></li>
               </ol>
             </div>
-
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-3">✨ Why Handwriting?</h2>
-              <p className="text-gray-300 leading-relaxed">
-                Handwriting is intimate. It's slower. It's permanent. It's yours. Years from now, you'll hold these notebooks and remember what you wrote, how your handwriting shook with vulnerability, where you were sitting. <strong>This app tracks progress. Your real conversation lives on paper.</strong>
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-3">⚠️ Some Questions Will Be Tough</h2>
-              <p className="text-gray-300 leading-relaxed mb-3">
-                <strong>This is intentional.</strong> Some questions will make you uncomfortable. They'll ask about death, regret, embarrassment, and pain. You won't be able to skip them—and that's the point.
-              </p>
-              <p className="text-gray-300 leading-relaxed mb-3">
-                But Aron's research proves this: <strong>vulnerability is the accelerant.</strong> When you answer honestly about hard things, your partner sees the real you. And when they respond with compassion instead of judgment, intimacy explodes.
-              </p>
-              <p className="text-gray-300 leading-relaxed">
-                The discomfort isn't a bug. <strong>It's the mechanism.</strong> Stay with it. Answer truthfully. Listen without fixing. This is how two people become truly close.
-              </p>
-            </div>
-
             <div className="bg-rose-500/20 border border-rose-500 rounded-xl p-4">
               <p className="text-white text-center font-semibold">
                 "The best conversations are the ones where you feel truly seen." — Arthur Aron
@@ -615,80 +471,78 @@ const NotebookApp = () => {
             </div>
           </div>
 
-          {/* Session Setup */}
-          <div className="bg-gradient-to-br from-indigo-700/40 to-indigo-600/30 border border-indigo-500 rounded-2xl p-8 mb-8 backdrop-blur">
-            <div className="flex items-center gap-2 mb-6">
+          {/* Setup */}
+          <div className="bg-gradient-to-br from-indigo-700/40 to-indigo-600/30 border border-indigo-500 rounded-2xl p-6 md:p-8 backdrop-blur">
+            <div className="flex items-center gap-2 mb-2">
               <Users className="w-6 h-6 text-indigo-300" />
               <h2 className="text-2xl font-bold text-white">Start Together</h2>
             </div>
+            <p className="text-indigo-200 text-sm mb-6">
+              One of you creates a room and shares its name. The other joins with the same name — on any phone, anywhere.
+            </p>
 
-            <div className="space-y-4">
+            {/* CREATE */}
+            <div className="bg-slate-800/40 rounded-xl p-4 space-y-4 mb-5">
+              <p className="text-white font-semibold flex items-center gap-2">🚪 Create a room</p>
               <div>
-                <label className="block text-indigo-200 font-semibold mb-2">Your Name</label>
+                <label className="block text-indigo-200 text-sm font-semibold mb-1">Your name</label>
                 <input
-                  type="text"
-                  value={creatorInputName}
-                  onChange={(e) => setCreatorInputName(e.target.value)}
-                  placeholder="Your name"
-                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  placeholder="e.g., Alex"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500/60 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                 />
               </div>
-
               <div>
-                <label className="block text-indigo-200 font-semibold mb-2">Room Name (Your Personal Space)</label>
+                <label className="block text-indigo-200 text-sm font-semibold mb-1">Room name</label>
                 <input
-                  type="text"
-                  value={creatorRoomName}
-                  onChange={(e) => setCreatorRoomName(e.target.value.toLowerCase())}
-                  placeholder="e.g., couple-journey"
-                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={createRoom}
+                  onChange={(e) => setCreateRoom(e.target.value.toLowerCase())}
+                  placeholder="e.g., our-journey"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500/60 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                 />
-                <p className="text-xs text-gray-400 mt-1">Letters, numbers, hyphens only (no spaces)</p>
+                <p className="text-xs text-gray-400 mt-1">Pick something you'll both remember. Letters, numbers and hyphens.</p>
               </div>
-
               <button
-                onClick={handleCreateSession}
-                disabled={!creatorInputName || !creatorRoomName.trim()}
-                className="w-full px-6 py-4 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold text-lg rounded-xl transition-all transform hover:scale-105 disabled:cursor-not-allowed shadow-lg"
+                onClick={createSession}
+                disabled={busy || !createName.trim() || !createRoom.trim()}
+                className="w-full px-6 py-4 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:opacity-50 text-white font-bold text-lg rounded-xl transition-all shadow-lg"
               >
-                I'll Start First
+                Create room & start
               </button>
+            </div>
 
-              <div className="text-center text-gray-400 text-sm">or</div>
+            <div className="text-center text-gray-400 text-sm mb-5">— or —</div>
 
-              <div className="bg-slate-700/50 rounded-xl p-4 space-y-4">
-                <p className="text-indigo-200 font-semibold text-center">Join Your Partner's Session</p>
-                <div>
-                  <label className="block text-indigo-200 font-semibold mb-2">Your Name</label>
-                  <input
-                    type="text"
-                    value={joinerInputName}
-                    onChange={(e) => setJoinerInputName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="w-full px-4 py-4 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-indigo-200 font-semibold mb-2">Room Name</label>
-                  <input
-                    type="text"
-                    value={joinerRoomName}
-                    onChange={(e) => setJoinerRoomName(e.target.value.toLowerCase())}
-                    placeholder="e.g., couple-journey"
-                    className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Letters, numbers, hyphens only (no spaces)</p>
-                </div>
-
-                <button
-                  onClick={handleJoinSession}
-                  disabled={!joinerInputName || !joinerRoomName.trim()}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold text-lg rounded-xl transition-all transform hover:scale-105 disabled:cursor-not-allowed shadow-lg"
-                >
-                  Join Session
-                </button>
+            {/* JOIN */}
+            <div className="bg-slate-800/40 rounded-xl p-4 space-y-4">
+              <p className="text-white font-semibold flex items-center gap-2">🔗 Join your partner's room</p>
+              <div>
+                <label className="block text-indigo-200 text-sm font-semibold mb-1">Your name</label>
+                <input
+                  value={joinName}
+                  onChange={(e) => setJoinName(e.target.value)}
+                  placeholder="e.g., Sam"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500/60 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
+                />
               </div>
+              <div>
+                <label className="block text-indigo-200 text-sm font-semibold mb-1">Room name</label>
+                <input
+                  value={joinRoom}
+                  onChange={(e) => { setJoinRoom(e.target.value.toLowerCase()); setJoinError(''); }}
+                  placeholder="the exact name your partner made"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500/60 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
+                />
+              </div>
+              {joinError && <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/40 rounded-lg p-2">{joinError}</p>}
+              <button
+                onClick={joinSession}
+                disabled={busy || !joinName.trim() || !joinRoom.trim()}
+                className="w-full px-6 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:opacity-50 text-white font-bold text-lg rounded-xl transition-all shadow-lg"
+              >
+                Join room
+              </button>
             </div>
           </div>
         </div>
@@ -696,327 +550,214 @@ const NotebookApp = () => {
     );
   }
 
-  // QUESTION SCREEN
-  if (screen === 'question') {
-    const phaseVisuals = PHASE_VISUALS[currentQuestion?.phase] || [];
-    
+  // ---------- REWARD (shared) ----------
+  if (rewardAt && REWARDS[rewardAt]) {
+    const r = REWARDS[rewardAt];
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-3xl mx-auto">
-          
-          {/* Header with Home Button */}
-          <div className="flex items-center justify-between mb-8">
-            <button
-              onClick={() => {
-                localStorage.removeItem('36q-room-name');
-                localStorage.removeItem('36q-user-name');
-                localStorage.removeItem('36q-user-role');
-                setScreen('intro');
-                setSessionActive(false);
-                setRoomName('');
-                setUserName('');
-                setUserRole(null);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700/50 hover:bg-slate-600 text-gray-300 rounded-lg transition"
-              title="Return to home"
-            >
-              <Home className="w-5 h-5" />
-              <span className="text-sm">Home</span>
-            </button>
-
-            <div className="flex-1 text-center">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <BookOpen className="w-7 h-7 text-rose-500" />
-                <h1 className="text-3xl font-bold text-white">36 Questions</h1>
-                <BookOpen className="w-7 h-7 text-rose-500" />
-              </div>
-              
-              {sessionActive && (
-                <div className="flex justify-center gap-6 text-sm text-gray-400 mb-4">
-                  <div>👤 {creatorName || 'Creator'} & {joinerName || 'Partner'}</div>
-                  <div>🏠 {roomName}</div>
-                </div>
-              )}
-            </div>
-
-            <div className="w-16"></div>
-          </div>
-
-          {/* Progress */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-3 text-center">
-              <p className="text-xs text-gray-400">Progress</p>
-              <p className="text-xl font-bold text-white">{answered.size}/36</p>
-            </div>
-            <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-3 text-center">
-              <p className="text-xs text-gray-400">Phase</p>
-              <p className="text-lg font-bold text-rose-400">
-                {currentQuestion.phase === 1 && "🌱"}
-                {currentQuestion.phase === 2 && "💫"}
-                {currentQuestion.phase === 3 && "🔥"}
-              </p>
-            </div>
-            <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-3 text-center">
-              <p className="text-xs text-gray-400">Connection</p>
-              <p className="text-xl font-bold text-white">{affectionLevel}%</p>
-            </div>
-          </div>
-
-          {/* Timer */}
-          {useTimer && (
-            <div className="mb-8">
-              <div className={`rounded-xl p-6 text-center border-2 ${!timerActive ? 'border-gray-500 bg-gray-500/10' : timerRemaining > 60 ? 'border-green-500 bg-green-500/10' : timerRemaining > 10 ? 'border-yellow-500 bg-yellow-500/10' : 'border-red-500 bg-red-500/10 animate-pulse'}`}>
-                <p className="text-sm text-gray-300 mb-2">{timerActive ? '⏱️ Time Remaining' : '⏸ Timer Paused'}</p>
-                <div className={`text-4xl font-bold font-mono ${!timerActive ? 'text-gray-400' : timerRemaining > 60 ? 'text-green-400' : timerRemaining > 10 ? 'text-yellow-400' : 'text-red-500'}`}>
-                  {formatTime(timerRemaining)}
-                </div>
-                {timerRemaining <= 10 && timerActive && (
-                  <p className="text-xs text-red-400 mt-2">⏰ Time running out!</p>
-                )}
-                <button
-                  onClick={() => setTimerActive(!timerActive)}
-                  className="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg text-sm transition-all"
-                >
-                  {timerActive ? '⏸ Pause' : '▶ Resume'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Inspiration Photos */}
-          <div className="mb-8">
-            <p className="text-xs text-gray-400 mb-3 uppercase font-semibold">Inspiration for your notebooks</p>
-            {phaseVisuals && phaseVisuals.length > 0 ? (
-              <div className="grid grid-cols-3 gap-3 mb-8">
-                {phaseVisuals.map((visual, i) => (
-                  <div
-                    key={i}
-                    className={`bg-gradient-to-br ${visual.color} rounded-lg p-4 flex flex-col items-center justify-center h-24 shadow-lg`}
-                  >
-                    <div className="text-3xl mb-2">{visual.emoji}</div>
-                    <p className="text-white text-xs font-semibold text-center">{visual.title}</p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          {/* Question Card */}
-          <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/30 border-2 border-slate-600 rounded-2xl p-8 mb-8 shadow-2xl backdrop-blur">
-            <div className="flex justify-between items-start mb-6">
-              <span className={`px-4 py-2 rounded-full text-sm font-semibold text-white backdrop-blur
-                ${currentQuestion.phase === 1 ? 'bg-blue-500/40' : ''}
-                ${currentQuestion.phase === 2 ? 'bg-purple-500/40' : ''}
-                ${currentQuestion.phase === 3 ? 'bg-rose-500/40' : ''}
-              `}>
-                {currentQuestion.phase === 1 && "🌱 Light"}
-                {currentQuestion.phase === 2 && "💫 Deeper"}
-                {currentQuestion.phase === 3 && "🔥 Deepest"}
-              </span>
-              <span className="text-sm font-semibold text-gray-400">#{currentQuestionIndex + 1}/36</span>
-            </div>
-
-            <h2 className="text-3xl md:text-4xl font-bold text-white leading-relaxed text-center mb-8">
-              {currentQuestion.text}
-            </h2>
-
-            {/* Instructions */}
-            <div className="bg-indigo-500/20 border border-indigo-500 rounded-xl p-6 mb-8">
-              <p className="text-indigo-200 font-semibold mb-3 text-lg">📓 What to do:</p>
-              <ol className="text-indigo-100 space-y-3 text-base">
-                <li>1. <strong>You:</strong> Write your answer in your notebook</li>
-                <li>2. <strong>Your partner:</strong> Reads the question, adds their answer</li>
-                <li>3. <strong>You both:</strong> Click "I'm Done" when ready to move forward</li>
-                <li>4. <strong>Note:</strong> You can go back, but not skip ahead</li>
-              </ol>
-            </div>
-          </div>
-
-          {/* Timer Toggle - Any Question */}
-          {!useTimer && sessionActive && (
-            <div className="bg-blue-500/20 border border-blue-500 rounded-xl p-6 mb-8">
-              <p className="text-blue-200 font-semibold mb-3">⏱️ Add a timer?</p>
-              <p className="text-blue-100 text-sm mb-4">15 minutes per question to keep things moving and present.</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setUseTimer(true);
-                    setTimerActive(true);
-                    update(ref(database, `sessions/${roomName}`), { useTimer: true });
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-all"
-                >
-                  Yes, Enable Timer
-                </button>
-                <button
-                  onClick={() => {
-                    // Just skip - don't show this again
-                    setScreen('question');
-                  }}
-                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-all"
-                >
-                  Skip
-                </button>
-              </div>
-            </div>
-          )}
-
-
-          {/* Confirmation Status */}
-          {sessionActive && (
-            <div className="mb-8">
-              {(() => {
-                const questionKey = `q-${currentQuestionIndex}`;
-                const myRole = localStorage.getItem('36q-user-role') || 'creator';
-                const partnerRole = myRole === 'creator' ? 'joiner' : 'creator';
-                const confirmedRoles = confirmedBy[questionKey] || [];
-                
-                const iDone = confirmedRoles.includes(myRole);
-                const partnerDone = confirmedRoles.includes(partnerRole);
-                const bothDone = iDone && partnerDone;
-                
-                const myName = localStorage.getItem('36q-user-name') || 'You';
-                const partnerName = myRole === 'creator' ? (joinerName || 'Partner') : (creatorName || 'Partner');
-                
-                return (
-                  <div className={`rounded-xl p-4 border ${bothDone ? 'bg-green-500/20 border-green-500' : 'bg-amber-500/20 border-amber-500'}`}>
-                    <p className="font-semibold mb-3 text-white">{bothDone ? '✅ Ready!' : '⏳ Waiting...'}</p>
-                    <div className="space-y-2 text-sm mb-4">
-                      <div className={iDone ? 'text-green-200' : 'text-amber-200'}>
-                        {iDone ? '✓' : '○'} You ({myName})
-                      </div>
-                      <div className={partnerDone ? 'text-green-200' : 'text-amber-200'}>
-                        {partnerDone ? '✓' : '○'} {partnerName}
-                      </div>
-                    </div>
-                    
-                    {bothDone && (
-                      <button
-                        onClick={handleNextQuestion}
-                        className="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition-all text-lg"
-                      >
-                        ➜ Next Question
-                      </button>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-3 mb-8">
-            {currentQuestionIndex > 0 && (
-              <button
-                onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
-                className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 px-6 rounded-xl transition-all text-lg"
-              >
-                <ChevronLeft className="w-6 h-6" /> Previous Question
-              </button>
-            )}
-            
-            <button
-              onClick={handleAnswered}
-              className={`w-full flex items-center justify-center gap-2 text-white font-bold py-4 px-6 rounded-xl transition-all transform text-lg shadow-lg ${
-                (() => {
-                  const questionKey = `q-${currentQuestionIndex}`;
-                  const myRole = localStorage.getItem('36q-user-role') || 'creator';
-                  const isDone = (confirmedBy[questionKey] || []).includes(myRole);
-                  return isDone
-                    ? 'bg-green-500 hover:bg-green-600'
-                    : 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 hover:scale-105';
-                })()
-              }`}
-            >
-              <Check className="w-6 h-6" />
-              {(() => {
-                const questionKey = `q-${currentQuestionIndex}`;
-                const myRole = localStorage.getItem('36q-user-role') || 'creator';
-                const isDone = (confirmedBy[questionKey] || []).includes(myRole);
-                return isDone ? 'Done ✓' : "I'm Done";
-              })()}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // REWARD SCREEN
-  if (screen === 'reward' && showReward) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="min-h-screen bg-gradient-to-br from-rose-900 via-slate-900 to-slate-900 flex items-center justify-center p-4 overflow-y-auto">
         <Confetti isActive={showConfetti} />
-        
-        <div className="max-w-md w-full">
-          <div className="bg-gradient-to-br from-rose-600 to-pink-600 rounded-3xl p-12 shadow-2xl text-center">
-            <div className="text-6xl mb-4">{showReward.icon}</div>
-            <h2 className="text-3xl font-bold text-white mb-2 animate-bounce">{showReward.title}</h2>
-            <p className="text-white/90 text-lg mb-8">🎉 Reward Unlocked! 🎉</p>
-
-            <div className="bg-white/20 rounded-xl p-6 mb-6 backdrop-blur">
-              {showReward.img && (
-                <img src={showReward.img} alt={showReward.activity} className="w-full h-40 object-cover rounded-lg mb-4" />
-              )}
-              <h3 className="text-2xl font-bold text-white mb-2">{showReward.activity}</h3>
-              <p className="text-white/90 text-sm mb-4">{showReward.description}</p>
-              
-              <div className="space-y-2 text-xs text-white/80">
-                <p><strong>Details:</strong> {showReward.details}</p>
-                <p><strong>Time:</strong> {showReward.time}</p>
-              </div>
-            </div>
-
-            <p className="text-white mb-6 text-sm">Do this together. Document the memories in your notebooks. 💕</p>
-            
-            <button
-              onClick={() => {
-                if (currentQuestionIndex < QUESTIONS.length - 1) {
-                  setCurrentQuestionIndex(currentQuestionIndex + 1);
-                  setScreen('question');
-                } else {
-                  setScreen('complete');
-                }
-              }}
-              className="w-full px-8 py-3 bg-white text-rose-600 font-bold rounded-lg hover:bg-gray-100 transition-all transform hover:scale-105 animate-bounce"
-            >
-              Continue →
-            </button>
+        <div className="bg-gradient-to-br from-rose-600/40 to-pink-600/30 border-2 border-rose-400 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl text-center backdrop-blur">
+          <div className="text-5xl mb-3">{r.icon}</div>
+          <p className="uppercase tracking-widest text-rose-200 text-xs font-bold mb-1">Milestone unlocked</p>
+          <h2 className="text-3xl font-bold text-white mb-4">{r.title}</h2>
+          <div className="bg-black/20 rounded-2xl p-5 text-left mb-6">
+            <h3 className="text-xl font-bold text-white mb-2">{r.activity}</h3>
+            <p className="text-white/90 text-sm mb-4">{r.description}</p>
+            <p className="text-white/80 text-xs mb-2"><strong>How to do it:</strong> {r.details}</p>
+            <p className="text-white/80 text-xs"><strong>Time:</strong> {r.time}</p>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // COMPLETE SCREEN
-  if (screen === 'complete') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-gradient-to-br from-rose-600/30 to-pink-600/30 border-2 border-rose-500 rounded-3xl p-12 max-w-md shadow-2xl text-center backdrop-blur">
-          <div className="mb-6 text-6xl">💕</div>
-          <h3 className="text-4xl font-bold text-white mb-4">You Did It!</h3>
-          <p className="text-gray-200 mb-4 text-lg">36 questions. All written. All discussed.</p>
-          <p className="text-white/80 mb-8">
-            Now comes your final reward: Book your weekend getaway together to celebrate this journey into each other. Choose anywhere you both love. Book it now. These notebooks are a map of your hearts. Hold onto them forever.
-          </p>
-          
+          <p className="text-white/90 mb-6 text-sm">Do this together and capture it in your notebooks. 💕</p>
           <button
-            onClick={() => {
-              setCurrentQuestionIndex(0);
-              setAnswered(new Set());
-              setSessionCode('');
-              setUserRole(null);
-              setSessionActive(false);
-              setScreen('intro');
-            }}
-            className="w-full px-8 py-4 bg-white text-rose-600 font-bold rounded-lg hover:bg-gray-100 transition-all"
+            onClick={dismissReward}
+            className="w-full px-8 py-4 bg-white text-rose-600 font-bold rounded-xl hover:bg-gray-100 transition-all"
           >
-            Start Again
+            {current >= TOTAL ? 'Finish →' : 'Continue →'}
           </button>
         </div>
       </div>
     );
   }
+
+  // ---------- COMPLETE (shared) ----------
+  if (current >= TOTAL) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-gradient-to-br from-rose-600/30 to-pink-600/30 border-2 border-rose-500 rounded-3xl p-8 md:p-12 max-w-md shadow-2xl text-center backdrop-blur">
+          <div className="mb-6 text-6xl">💕</div>
+          <h3 className="text-4xl font-bold text-white mb-4">You did it!</h3>
+          <p className="text-gray-200 mb-4 text-lg">36 questions. All written. All discussed.</p>
+          <p className="text-white/80 mb-8">
+            Your notebooks are now a map of your hearts. Hold onto them. And go celebrate — you earned that weekend away.
+          </p>
+          <div className="space-y-3">
+            <button onClick={startOver} className="w-full px-8 py-4 bg-white text-rose-600 font-bold rounded-xl hover:bg-gray-100 transition-all">
+              Start again
+            </button>
+            <button onClick={leave} className="w-full px-8 py-3 bg-slate-700/60 text-gray-200 font-semibold rounded-xl hover:bg-slate-600 transition-all">
+              Leave room
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- QUESTION ----------
+  const phase = PHASE_META[currentQuestion.phase];
+  const pct = Math.round((completedCount / TOTAL) * 100);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8 overflow-y-auto">
+      <div className="max-w-2xl mx-auto">
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={leave} className="flex items-center gap-2 px-3 py-2 bg-slate-700/50 hover:bg-slate-600 text-gray-300 rounded-lg transition text-sm">
+            <Home className="w-4 h-4" /> Leave
+          </button>
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-6 h-6 text-rose-500" />
+            <h1 className="text-xl md:text-2xl font-bold text-white">36 Questions</h1>
+          </div>
+          <button onClick={copyRoom} className="flex items-center gap-1.5 px-3 py-2 bg-slate-700/50 hover:bg-slate-600 text-gray-300 rounded-lg transition text-sm" title="Copy room name">
+            <Copy className="w-4 h-4" /> {copied ? 'Copied' : 'Room'}
+          </button>
+        </div>
+
+        {/* Presence bar */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 mb-4 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2 text-gray-200">
+            <span className="text-emerald-400">●</span> {myName} <span className="text-gray-500">(you)</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-200">
+            {partnerPresent ? (
+              <><span className="text-emerald-400">●</span> {partnerName}</>
+            ) : (
+              <><span className="text-amber-400 animate-pulse">○</span> <span className="text-amber-300">waiting for partner…</span></>
+            )}
+          </div>
+        </div>
+
+        {/* Waiting-for-join callout */}
+        {!partnerPresent && (
+          <div className="bg-amber-500/10 border border-amber-500/50 rounded-xl p-4 mb-4">
+            <p className="text-amber-200 text-sm">
+              Share your room name <strong className="text-white">"{identity.room}"</strong> with your partner. They open the app, tap <em>Join room</em>, and enter the same name. You can start reading question 1 now — you'll stay in sync automatically.
+            </p>
+          </div>
+        )}
+
+        {/* Progress */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+            <span>Question {current + 1} of {TOTAL}</span>
+            <span className={phase.color}>{phase.emoji} {phase.label}</span>
+            <span>{completedCount} done · {pct}%</span>
+          </div>
+          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-rose-500 to-pink-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+
+        {/* Question card */}
+        <div className="bg-gradient-to-br from-slate-700/50 to-slate-600/30 border border-slate-600 rounded-2xl p-6 md:p-8 mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-white leading-relaxed text-center">
+            {currentQuestion.text}
+          </h2>
+        </div>
+
+        {/* Timer */}
+        {useTimer ? (
+          <div className="mb-6">
+            <div className={`rounded-xl p-5 text-center border-2 ${!timerActive ? 'border-slate-600 bg-slate-700/30' : timerRemaining > 60 ? 'border-emerald-500 bg-emerald-500/10' : timerRemaining > 10 ? 'border-yellow-500 bg-yellow-500/10' : 'border-red-500 bg-red-500/10 animate-pulse'}`}>
+              <p className="text-xs text-gray-300 mb-1 flex items-center justify-center gap-1">
+                <Clock className="w-3.5 h-3.5" /> {timerActive ? 'Time remaining' : 'Timer paused'}
+              </p>
+              <div className={`text-4xl font-bold font-mono ${!timerActive ? 'text-gray-300' : timerRemaining > 60 ? 'text-emerald-400' : timerRemaining > 10 ? 'text-yellow-400' : 'text-red-400'}`}>
+                {fmt(timerRemaining)}
+              </div>
+              <div className="flex gap-2 mt-3 justify-center">
+                <button onClick={() => setTimerActive(!timerActive)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold rounded-lg">
+                  {timerActive ? 'Pause' : (timerRemaining === 0 ? 'Restart' : 'Start')}
+                </button>
+                <button onClick={() => { setTimerRemaining(15 * 60); setTimerActive(false); }} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold rounded-lg">
+                  Reset
+                </button>
+                <button onClick={disableTimer} className="px-4 py-2 bg-slate-700/60 hover:bg-slate-600 text-gray-300 text-sm font-semibold rounded-lg">
+                  Turn off
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button onClick={enableTimer} className="w-full mb-6 px-4 py-3 bg-slate-800/50 border border-slate-700 hover:border-indigo-500 text-gray-300 rounded-xl text-sm transition flex items-center justify-center gap-2">
+            <Clock className="w-4 h-4" /> Add a 15-minute timer for this question (optional)
+          </button>
+        )}
+
+        {/* Done status — two clear rows */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-4 space-y-2">
+          <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${iAmDone ? 'bg-emerald-500/15' : 'bg-slate-700/40'}`}>
+            <span className="text-gray-200 text-sm">{myName} (you)</span>
+            <span className={`text-sm font-semibold ${iAmDone ? 'text-emerald-300' : 'text-gray-400'}`}>
+              {iAmDone ? '✓ Done' : 'Writing…'}
+            </span>
+          </div>
+          <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${partnerDone ? 'bg-emerald-500/15' : 'bg-slate-700/40'}`}>
+            <span className="text-gray-200 text-sm">{partnerPresent ? partnerName : 'Partner'}</span>
+            <span className={`text-sm font-semibold ${partnerDone ? 'text-emerald-300' : 'text-gray-400'}`}>
+              {partnerDone ? '✓ Done' : partnerPresent ? 'Writing…' : 'Not joined'}
+            </span>
+          </div>
+        </div>
+
+        {/* Primary action */}
+        {!iAmDone ? (
+          <button
+            onClick={toggleMyDone}
+            className="w-full mb-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 text-lg shadow-lg"
+          >
+            <Check className="w-6 h-6" /> I'm done writing
+          </button>
+        ) : (
+          <div className="mb-3">
+            {bothDone ? (
+              <button
+                onClick={goNext}
+                className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] text-lg shadow-lg"
+              >
+                {REWARDS[current + 1] ? '🎉 Both done — unlock milestone →' : 'Both done — next question →'}
+              </button>
+            ) : (
+              <div className="w-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-200 font-semibold py-4 rounded-xl text-center">
+                ✓ You're done — waiting for {partnerPresent ? partnerName : 'your partner'}…
+              </div>
+            )}
+            <button
+              onClick={toggleMyDone}
+              className="w-full mt-2 text-gray-400 hover:text-white text-sm py-2 flex items-center justify-center gap-1.5 transition"
+            >
+              <Undo2 className="w-4 h-4" /> Not yet — I need more time
+            </button>
+          </div>
+        )}
+
+        {/* Back */}
+        {current > 0 && (
+          <button
+            onClick={goPrevious}
+            className="w-full flex items-center justify-center gap-2 bg-slate-800/50 hover:bg-slate-700 text-gray-300 font-semibold py-3 rounded-xl transition text-sm"
+          >
+            <ChevronLeft className="w-5 h-5" /> Previous question
+          </button>
+        )}
+
+        <p className="text-center text-gray-500 text-xs mt-6">
+          Room "{identity.room}" · your progress saves automatically · reopen any time to continue
+        </p>
+      </div>
+    </div>
+  );
 };
 
 export default NotebookApp;
