@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Flame, BookOpen, Check, ChevronRight, ChevronLeft, Clock, Users, Home } from 'lucide-react';
 import { database } from './firebase';
-import { ref, set, get, onValue } from 'firebase/database';
+import { ref, set, get, onValue, update } from 'firebase/database';
 
 // ALL 36 ARTHUR ARON QUESTIONS
 const QUESTIONS = [
@@ -235,6 +235,7 @@ const NotebookApp = () => {
   const [timerActive, setTimerActive] = useState(false);
   const [useTimer, setUseTimer] = useState(false);
   const [timerDuration] = useState(15 * 60);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
 
   // Load from Firebase on mount
   useEffect(() => {
@@ -293,7 +294,7 @@ const NotebookApp = () => {
         updatedAt: new Date().toISOString(),
       };
       const sessionRef = ref(database, `sessions/${sessionCode}`);
-      set(sessionRef, data);
+      update(sessionRef, data).catch(err => console.log('Save error:', err));
     }
   }, [currentQuestionIndex, answered, confirmedBy, sessionActive, sessionCode, partnerJoined, useTimer]);
 
@@ -325,35 +326,47 @@ const NotebookApp = () => {
   };
 
   const handleJoinSession = () => {
-    localStorage.setItem('36q-session-code', sessionCode);
-    localStorage.setItem('36q-user-name', joinerInputName);
-    localStorage.setItem('36q-user-role', 'joiner');
-    setUserRole('joiner');
-    setSessionActive(true);
-    setPartnerJoined(true);
-    setJoinerName(joinerInputName);
+    const trimmedCode = sessionCode.trim().toUpperCase();
     
-    // Load session data from Firebase using listener
-    const sessionRef = ref(database, `sessions/${sessionCode}`);
-    onValue(sessionRef, (snapshot) => {
+    // First, check if session exists in Firebase
+    const sessionRef = ref(database, `sessions/${trimmedCode}`);
+    
+    get(sessionRef).then((snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
+        
+        // Session found - set everything up
+        localStorage.setItem('36q-session-code', trimmedCode);
+        localStorage.setItem('36q-user-name', joinerInputName);
+        localStorage.setItem('36q-user-role', 'joiner');
+        
+        setUserRole('joiner');
+        setSessionCode(trimmedCode);
+        setSessionActive(true);
+        setPartnerJoined(true);
+        setJoinerName(joinerInputName);
+        setCreatorName(data.creator || '');
+        
+        // Load session data
         setCurrentQuestionIndex(data.currentQuestionIndex || 0);
         setAnswered(new Set(data.answered || []));
         setConfirmedBy(data.confirmedBy || {});
         setUseTimer(data.useTimer || false);
-        setCreatorName(data.creator || '');
         
         // Update Firebase with joiner's name
-        set(sessionRef, {
-          ...data,
+        update(sessionRef, {
           joiner: joinerInputName,
           partnerJoined: true,
         });
+        
+        setScreen('question');
+      } else {
+        alert('❌ Session code not found. Please check and try again.');
       }
+    }).catch((error) => {
+      console.log('Error:', error);
+      alert('❌ Error loading session. Please try again.');
     });
-    
-    setScreen('question');
   };
 
   const currentQuestion = QUESTIONS[currentQuestionIndex];
