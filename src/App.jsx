@@ -221,6 +221,8 @@ const NotebookApp = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   
   // SESSION STATE
+  const [creatorRoomName, setCreatorRoomName] = useState('');
+  const [joinerRoomName, setJoinerRoomName] = useState('');
   const [roomName, setRoomName] = useState('');
   const [userName, setUserName] = useState('');
   const [creatorInputName, setCreatorInputName] = useState(''); // Separate input for "I'll Start First"
@@ -336,12 +338,12 @@ const NotebookApp = () => {
   };
 
   const handleCreateSession = () => {
-    if (!roomName.trim()) {
+    if (!creatorRoomName.trim()) {
       alert('Please enter a room name');
       return;
     }
     
-    const cleanRoomName = roomName.toLowerCase().trim();
+    const cleanRoomName = creatorRoomName.toLowerCase().trim();
     
     localStorage.setItem('36q-room-name', cleanRoomName);
     localStorage.setItem('36q-user-name', creatorInputName);
@@ -366,12 +368,12 @@ const NotebookApp = () => {
   };
 
   const handleJoinSession = () => {
-    if (!roomName.trim()) {
+    if (!joinerRoomName.trim()) {
       alert('Please enter the room name');
       return;
     }
     
-    const cleanRoomName = roomName.toLowerCase().trim();
+    const cleanRoomName = joinerRoomName.toLowerCase().trim();
 
     localStorage.setItem('36q-room-name', cleanRoomName);
     localStorage.setItem('36q-user-name', joinerInputName);
@@ -592,8 +594,8 @@ const NotebookApp = () => {
                 <label className="block text-indigo-200 font-semibold mb-2">Room Name (Your Personal Space)</label>
                 <input
                   type="text"
-                  value={roomName}
-                  onChange={(e) => setRoomName(e.target.value.toLowerCase())}
+                  value={creatorRoomName}
+                  onChange={(e) => setCreatorRoomName(e.target.value.toLowerCase())}
                   placeholder="e.g., sorab-priyal"
                   className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
@@ -602,7 +604,7 @@ const NotebookApp = () => {
 
               <button
                 onClick={handleCreateSession}
-                disabled={!creatorInputName || !roomName.trim()}
+                disabled={!creatorInputName || !creatorRoomName.trim()}
                 className="w-full px-6 py-4 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold text-lg rounded-xl transition-all transform hover:scale-105 disabled:cursor-not-allowed shadow-lg"
               >
                 I'll Start First
@@ -627,8 +629,8 @@ const NotebookApp = () => {
                   <label className="block text-indigo-200 font-semibold mb-2">Room Name</label>
                   <input
                     type="text"
-                    value={roomName}
-                    onChange={(e) => setRoomName(e.target.value.toLowerCase())}
+                    value={joinerRoomName}
+                    onChange={(e) => setJoinerRoomName(e.target.value.toLowerCase())}
                     placeholder="e.g., sorab-priyal"
                     className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
@@ -637,7 +639,7 @@ const NotebookApp = () => {
 
                 <button
                   onClick={handleJoinSession}
-                  disabled={!joinerInputName || !roomName.trim()}
+                  disabled={!joinerInputName || !joinerRoomName.trim()}
                   className="w-full px-6 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold text-lg rounded-xl transition-all transform hover:scale-105 disabled:cursor-not-allowed shadow-lg"
                 >
                   Join Session
