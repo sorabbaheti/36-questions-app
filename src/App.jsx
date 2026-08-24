@@ -240,9 +240,6 @@ const NotebookApp = () => {
   const [timerRemaining, setTimerRemaining] = useState(15 * 60);
   const [sessionLoaded, setSessionLoaded] = useState(false);
 
-  // SYNC STATE
-  const [syncingQuestion, setSyncingQuestion] = useState(null); // Track which question is syncing
-
   // Timer countdown effect
   useEffect(() => {
     if (!useTimer || !timerActive) return;
@@ -381,7 +378,6 @@ const NotebookApp = () => {
       setPartnerJoined(false);
       setUseTimer(false);
       setTimerRemaining(15 * 60);
-      setSyncingQuestion(null);
       
       localStorage.setItem('36q-room-name', cleanRoomName);
       localStorage.setItem('36q-user-name', creatorInputName);
@@ -423,7 +419,6 @@ const NotebookApp = () => {
     setJoinerName(joinerInputName);
     setTimerRemaining(15 * 60);
     setRoomName(cleanRoomName);
-    setSyncingQuestion(null);
     
     // Load existing session from Firebase (one-time fetch)
     const sessionRef = ref(database, `sessions/${cleanRoomName}`);
@@ -460,43 +455,25 @@ const NotebookApp = () => {
   const affectionLevel = Math.floor((answered.size / QUESTIONS.length) * 100);
 
   const handleAnswered = () => {
-    // Track that this user has confirmed for this question
     const questionKey = `q-${currentQuestionIndex}`;
-    const newConfirmedBy = { ...confirmedBy };
-    
-    if (!newConfirmedBy[questionKey]) {
-      newConfirmedBy[questionKey] = [];
-    }
-    
-    // Get user role
     const myRole = localStorage.getItem('36q-user-role') || 'creator';
     
-    // Add current user's role to confirmed list if not already there
-    if (!newConfirmedBy[questionKey].includes(myRole)) {
-      newConfirmedBy[questionKey].push(myRole);
+    // Build updated confirmed list
+    const confirmedRoles = confirmedBy[questionKey] || [];
+    if (!confirmedRoles.includes(myRole)) {
+      confirmedRoles.push(myRole);
     }
     
-    // Show syncing state
-    setSyncingQuestion(currentQuestionIndex);
+    const newConfirmedBy = { ...confirmedBy, [questionKey]: confirmedRoles };
+    setConfirmedBy(newConfirmedBy);
     
-    // SAVE TO FIREBASE
+    // Save to Firebase
     if (sessionActive && roomName) {
       const sessionRef = ref(database, `sessions/${roomName}`);
-      update(sessionRef, {
-        confirmedBy: newConfirmedBy,
-      }).then(() => {
-        // Only update UI after Firebase confirms
-        setConfirmedBy(newConfirmedBy);
-        setSyncingQuestion(null);
-      }).catch(err => {
-        console.log('Error saving confirmation:', err);
-        setSyncingQuestion(null);
-        alert('❌ Failed to sync. Please try again.');
+      update(sessionRef, { confirmedBy: newConfirmedBy }).catch(err => {
+        console.log('Error:', err);
+        alert('Failed to sync. Please try again.');
       });
-    } else {
-      // Offline mode
-      setConfirmedBy(newConfirmedBy);
-      setSyncingQuestion(null);
     }
   };
 
@@ -527,12 +504,20 @@ const NotebookApp = () => {
 
     // Move to next question or complete
     if (currentQuestionIndex < QUESTIONS.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      // Reset confirmations for new question
       const newConfirmedBy = { ...confirmedBy };
       delete newConfirmedBy[questionKey];
       setConfirmedBy(newConfirmedBy);
-      setSyncingQuestion(null);
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      
+      // Save cleaned confirmedBy to Firebase so both users see it
+      if (sessionActive && roomName) {
+        const sessionRef = ref(database, `sessions/${roomName}`);
+        update(sessionRef, { 
+          confirmedBy: newConfirmedBy,
+          currentQuestionIndex: currentQuestionIndex + 1
+        }).catch(err => console.log('Error:', err));
+      }
+      
       setScreen('question');
     } else {
       setScreen('complete');
@@ -882,38 +867,36 @@ const NotebookApp = () => {
             <div className="mb-8">
               {(() => {
                 const questionKey = `q-${currentQuestionIndex}`;
-                const confirmedRoles = confirmedBy[questionKey] || [];
-                const bothConfirmed = confirmedRoles.length >= 2;
                 const myRole = localStorage.getItem('36q-user-role') || 'creator';
+                const partnerRole = myRole === 'creator' ? 'joiner' : 'creator';
+                const confirmedRoles = confirmedBy[questionKey] || [];
+                
+                const iDone = confirmedRoles.includes(myRole);
+                const partnerDone = confirmedRoles.includes(partnerRole);
+                const bothDone = iDone && partnerDone;
+                
                 const myName = localStorage.getItem('36q-user-name') || 'You';
-                const partnerName = myRole === 'creator' ? joinerName || 'Partner' : creatorName || 'Partner';
+                const partnerName = myRole === 'creator' ? (joinerName || 'Partner') : (creatorName || 'Partner');
                 
                 return (
-                  <div className={`rounded-xl p-4 border ${bothConfirmed ? 'bg-green-500/20 border-green-500' : 'bg-amber-500/20 border-amber-500'}`}>
-                    <p className="font-semibold mb-3 text-white">
-                      {bothConfirmed ? '✅ Both Answered!' : '⏳ Waiting for Confirmation'}
-                    </p>
+                  <div className={`rounded-xl p-4 border ${bothDone ? 'bg-green-500/20 border-green-500' : 'bg-amber-500/20 border-amber-500'}`}>
+                    <p className="font-semibold mb-3 text-white">{bothDone ? '✅ Ready!' : '⏳ Waiting...'}</p>
                     <div className="space-y-2 text-sm mb-4">
-                      <div className={`flex items-center gap-2 ${confirmedRoles.includes(myRole) ? 'text-green-200' : 'text-amber-200'}`}>
-                        {confirmedRoles.includes(myRole) ? '✓' : '○'} You ({myName})
+                      <div className={iDone ? 'text-green-200' : 'text-amber-200'}>
+                        {iDone ? '✓' : '○'} You ({myName})
                       </div>
-                      <div className={`flex items-center gap-2 ${confirmedRoles.includes(myRole === 'creator' ? 'joiner' : 'creator') ? 'text-green-200' : 'text-amber-200'}`}>
-                        {confirmedRoles.includes(myRole === 'creator' ? 'joiner' : 'creator') ? '✓' : '○'} {partnerName}
+                      <div className={partnerDone ? 'text-green-200' : 'text-amber-200'}>
+                        {partnerDone ? '✓' : '○'} {partnerName}
                       </div>
                     </div>
                     
-                    {bothConfirmed && (
+                    {bothDone && (
                       <button
                         onClick={handleNextQuestion}
-                        className="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 text-lg"
+                        className="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition-all text-lg"
                       >
                         ➜ Next Question
                       </button>
-                    )}
-                    {!bothConfirmed && (
-                      <p className="text-xs text-amber-100">
-                        💕 Both partners need to click "I'm Done" before you can continue.
-                      </p>
                     )}
                   </div>
                 );
@@ -934,33 +917,23 @@ const NotebookApp = () => {
             
             <button
               onClick={handleAnswered}
-              disabled={syncingQuestion === currentQuestionIndex}
               className={`w-full flex items-center justify-center gap-2 text-white font-bold py-4 px-6 rounded-xl transition-all transform text-lg shadow-lg ${
-                syncingQuestion === currentQuestionIndex
-                  ? 'bg-gradient-to-r from-slate-600 to-slate-500 cursor-not-allowed opacity-75'
-                  : 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 hover:scale-105'
+                (() => {
+                  const questionKey = `q-${currentQuestionIndex}`;
+                  const myRole = localStorage.getItem('36q-user-role') || 'creator';
+                  const isDone = (confirmedBy[questionKey] || []).includes(myRole);
+                  return isDone
+                    ? 'bg-green-500 hover:bg-green-600'
+                    : 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 hover:scale-105';
+                })()
               }`}
             >
-              {syncingQuestion === currentQuestionIndex ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Syncing...
-                </>
-              ) : (() => {
+              <Check className="w-6 h-6" />
+              {(() => {
                 const questionKey = `q-${currentQuestionIndex}`;
-                const confirmedRoles = confirmedBy[questionKey] || [];
                 const myRole = localStorage.getItem('36q-user-role') || 'creator';
-                const isUserDone = confirmedRoles.includes(myRole);
-                
-                return isUserDone ? (
-                  <>
-                    <Check className="w-6 h-6" /> Done ✓
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-6 h-6" /> I'm Done
-                  </>
-                );
+                const isDone = (confirmedBy[questionKey] || []).includes(myRole);
+                return isDone ? 'Done ✓' : "I'm Done";
               })()}
             </button>
           </div>
