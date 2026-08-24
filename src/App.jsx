@@ -234,8 +234,40 @@ const NotebookApp = () => {
   // TIMER STATE
   const [timerActive, setTimerActive] = useState(false);
   const [useTimer, setUseTimer] = useState(false);
-  const [timerDuration] = useState(15 * 60);
+  const [timerDuration] = useState(15 * 60); // 15 minutes in seconds
+  const [timerRemaining, setTimerRemaining] = useState(15 * 60);
   const [sessionLoaded, setSessionLoaded] = useState(false);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (!useTimer || !timerActive) return;
+
+    const interval = setInterval(() => {
+      setTimerRemaining((prev) => {
+        if (prev <= 1) {
+          setTimerActive(false);
+          return timerDuration;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [useTimer, timerActive, timerDuration]);
+
+  // Reset timer when moving to new question
+  useEffect(() => {
+    if (useTimer) {
+      setTimerRemaining(timerDuration);
+      setTimerActive(true);
+    }
+  }, [currentQuestionIndex, useTimer, timerDuration]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   // Load from Firebase on mount
   useEffect(() => {
@@ -571,7 +603,7 @@ const NotebookApp = () => {
               <button
                 onClick={handleCreateSession}
                 disabled={!creatorInputName || !roomName.trim()}
-                className="w-full px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed"
+                className="w-full px-6 py-4 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold text-lg rounded-xl transition-all transform hover:scale-105 disabled:cursor-not-allowed shadow-lg"
               >
                 I'll Start First
               </button>
@@ -587,7 +619,7 @@ const NotebookApp = () => {
                     value={joinerInputName}
                     onChange={(e) => setJoinerInputName(e.target.value)}
                     placeholder="Enter your name"
-                    className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-4 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
                   />
                 </div>
 
@@ -606,7 +638,7 @@ const NotebookApp = () => {
                 <button
                   onClick={handleJoinSession}
                   disabled={!joinerInputName || !roomName.trim()}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed"
+                  className="w-full px-6 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold text-lg rounded-xl transition-all transform hover:scale-105 disabled:cursor-not-allowed shadow-lg"
                 >
                   Join Session
                 </button>
@@ -685,12 +717,17 @@ const NotebookApp = () => {
           </div>
 
           {/* Timer */}
-          {timerActive && useTimer && (
+          {useTimer && (
             <div className="mb-8">
-              <Timer 
-                duration={timerDuration}
-                onComplete={() => setTimerActive(false)}
-              />
+              <div className={`rounded-xl p-6 text-center border-2 ${timerRemaining > 60 ? 'border-green-500 bg-green-500/10' : timerRemaining > 10 ? 'border-yellow-500 bg-yellow-500/10' : 'border-red-500 bg-red-500/10 animate-pulse'}`}>
+                <p className="text-sm text-gray-300 mb-2">Time Remaining</p>
+                <div className={`text-4xl font-bold font-mono ${timerRemaining > 60 ? 'text-green-400' : timerRemaining > 10 ? 'text-yellow-400' : 'text-red-500'}`}>
+                  {formatTime(timerRemaining)}
+                </div>
+                {timerRemaining <= 10 && (
+                  <p className="text-xs text-red-400 mt-2">⏰ Time running out!</p>
+                )}
+              </div>
             </div>
           )}
 
@@ -732,9 +769,9 @@ const NotebookApp = () => {
             </h2>
 
             {/* Instructions */}
-            <div className="bg-indigo-500/20 border border-indigo-500 rounded-xl p-6">
-              <p className="text-indigo-200 font-semibold mb-3">📓 What to do:</p>
-              <ol className="text-indigo-100 space-y-2 text-sm">
+            <div className="bg-indigo-500/20 border border-indigo-500 rounded-xl p-6 mb-8">
+              <p className="text-indigo-200 font-semibold mb-3 text-lg">📓 What to do:</p>
+              <ol className="text-indigo-100 space-y-3 text-base">
                 <li>1. <strong>You:</strong> Write your answer in your notebook</li>
                 <li>2. <strong>Your partner:</strong> Reads the question, adds their answer</li>
                 <li>3. <strong>You both:</strong> Click "I'm Done" when ready to move forward</li>
@@ -795,21 +832,21 @@ const NotebookApp = () => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 mb-8">
+          <div className="flex flex-col gap-3 mb-8">
             {currentQuestionIndex > 0 && (
               <button
                 onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
-                className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-lg transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 px-6 rounded-xl transition-all text-lg"
               >
-                <ChevronLeft className="w-5 h-5" /> Previous
+                <ChevronLeft className="w-6 h-6" /> Previous Question
               </button>
             )}
             
             <button
               onClick={handleAnswered}
-              className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold py-3 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-lg shadow-lg"
             >
-              <Check className="w-5 h-5" /> I'm Done
+              <Check className="w-6 h-6" /> I'm Done
             </button>
           </div>
         </div>
