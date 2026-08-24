@@ -381,6 +381,7 @@ const NotebookApp = () => {
       setPartnerJoined(false);
       setUseTimer(false);
       setTimerRemaining(15 * 60);
+      setSyncingQuestion(null);
       
       localStorage.setItem('36q-room-name', cleanRoomName);
       localStorage.setItem('36q-user-name', creatorInputName);
@@ -422,6 +423,7 @@ const NotebookApp = () => {
     setJoinerName(joinerInputName);
     setTimerRemaining(15 * 60);
     setRoomName(cleanRoomName);
+    setSyncingQuestion(null);
     
     // Load existing session from Firebase (one-time fetch)
     const sessionRef = ref(database, `sessions/${cleanRoomName}`);
@@ -530,6 +532,7 @@ const NotebookApp = () => {
       const newConfirmedBy = { ...confirmedBy };
       delete newConfirmedBy[questionKey];
       setConfirmedBy(newConfirmedBy);
+      setSyncingQuestion(null);
       setScreen('question');
     } else {
       setScreen('complete');
@@ -943,15 +946,22 @@ const NotebookApp = () => {
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Syncing...
                 </>
-              ) : confirmedBy[`q-${currentQuestionIndex}`]?.includes(localStorage.getItem('36q-user-role') || 'creator') ? (
-                <>
-                  <Check className="w-6 h-6" /> Done ✓
-                </>
-              ) : (
-                <>
-                  <Check className="w-6 h-6" /> I'm Done
-                </>
-              )}
+              ) : (() => {
+                const questionKey = `q-${currentQuestionIndex}`;
+                const confirmedRoles = confirmedBy[questionKey] || [];
+                const myRole = localStorage.getItem('36q-user-role') || 'creator';
+                const isUserDone = confirmedRoles.includes(myRole);
+                
+                return isUserDone ? (
+                  <>
+                    <Check className="w-6 h-6" /> Done ✓
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-6 h-6" /> I'm Done
+                  </>
+                );
+              })()}
             </button>
           </div>
         </div>
