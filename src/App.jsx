@@ -240,6 +240,9 @@ const NotebookApp = () => {
   const [timerRemaining, setTimerRemaining] = useState(15 * 60);
   const [sessionLoaded, setSessionLoaded] = useState(false);
 
+  // SYNC STATE
+  const [syncingQuestion, setSyncingQuestion] = useState(null); // Track which question is syncing
+
   // Timer countdown effect
   useEffect(() => {
     if (!useTimer || !timerActive) return;
@@ -471,14 +474,27 @@ const NotebookApp = () => {
       newConfirmedBy[questionKey].push(myRole);
     }
     
-    setConfirmedBy(newConfirmedBy);
+    // Show syncing state
+    setSyncingQuestion(currentQuestionIndex);
     
-    // SAVE TO FIREBASE IMMEDIATELY
+    // SAVE TO FIREBASE
     if (sessionActive && roomName) {
       const sessionRef = ref(database, `sessions/${roomName}`);
       update(sessionRef, {
         confirmedBy: newConfirmedBy,
-      }).catch(err => console.log('Error saving confirmation:', err));
+      }).then(() => {
+        // Only update UI after Firebase confirms
+        setConfirmedBy(newConfirmedBy);
+        setSyncingQuestion(null);
+      }).catch(err => {
+        console.log('Error saving confirmation:', err);
+        setSyncingQuestion(null);
+        alert('❌ Failed to sync. Please try again.');
+      });
+    } else {
+      // Offline mode
+      setConfirmedBy(newConfirmedBy);
+      setSyncingQuestion(null);
     }
   };
 
@@ -828,8 +844,8 @@ const NotebookApp = () => {
             </div>
           </div>
 
-          {/* Timer Toggle - First Question */}
-          {currentQuestionIndex === 0 && !useTimer && sessionActive && (
+          {/* Timer Toggle - Any Question */}
+          {!useTimer && sessionActive && (
             <div className="bg-blue-500/20 border border-blue-500 rounded-xl p-6 mb-8">
               <p className="text-blue-200 font-semibold mb-3">⏱️ Add a timer?</p>
               <p className="text-blue-100 text-sm mb-4">15 minutes per question to keep things moving and present.</p>
@@ -915,9 +931,27 @@ const NotebookApp = () => {
             
             <button
               onClick={handleAnswered}
-              className="w-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2 text-lg shadow-lg"
+              disabled={syncingQuestion === currentQuestionIndex}
+              className={`w-full flex items-center justify-center gap-2 text-white font-bold py-4 px-6 rounded-xl transition-all transform text-lg shadow-lg ${
+                syncingQuestion === currentQuestionIndex
+                  ? 'bg-gradient-to-r from-slate-600 to-slate-500 cursor-not-allowed opacity-75'
+                  : 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 hover:scale-105'
+              }`}
             >
-              <Check className="w-6 h-6" /> I'm Done
+              {syncingQuestion === currentQuestionIndex ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Syncing...
+                </>
+              ) : confirmedBy[`q-${currentQuestionIndex}`]?.includes(localStorage.getItem('36q-user-role') || 'creator') ? (
+                <>
+                  <Check className="w-6 h-6" /> Done ✓
+                </>
+              ) : (
+                <>
+                  <Check className="w-6 h-6" /> I'm Done
+                </>
+              )}
             </button>
           </div>
         </div>
