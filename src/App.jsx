@@ -345,16 +345,10 @@ const NotebookApp = () => {
     
     const cleanRoomName = creatorRoomName.toLowerCase().trim();
     
-    localStorage.setItem('36q-room-name', cleanRoomName);
-    localStorage.setItem('36q-user-name', creatorInputName);
-    localStorage.setItem('36q-user-role', 'creator');
-    setRoomName(cleanRoomName);
-    setUserRole('creator');
-    setCreatorName(creatorInputName);
-    setSessionActive(true);
-    setScreen('question');
+    // Disable old session first
+    setSessionActive(false);
     
-    // Create session in Firebase
+    // Create fresh session in Firebase FIRST (before changing state)
     const sessionRef = ref(database, `sessions/${cleanRoomName}`);
     set(sessionRef, {
       creator: creatorInputName,
@@ -364,6 +358,31 @@ const NotebookApp = () => {
       partnerJoined: false,
       useTimer: false,
       createdAt: new Date().toISOString(),
+    }).then(() => {
+      // Only update state AFTER Firebase write completes
+      localStorage.removeItem('36q-room-name');
+      localStorage.removeItem('36q-user-name');
+      localStorage.removeItem('36q-user-role');
+      
+      setCurrentQuestionIndex(0);
+      setAnswered(new Set());
+      setConfirmedBy({});
+      setJoinerName('');
+      setPartnerJoined(false);
+      setUseTimer(false);
+      setTimerRemaining(15 * 60);
+      
+      localStorage.setItem('36q-room-name', cleanRoomName);
+      localStorage.setItem('36q-user-name', creatorInputName);
+      localStorage.setItem('36q-user-role', 'creator');
+      
+      setRoomName(cleanRoomName);
+      setUserRole('creator');
+      setCreatorName(creatorInputName);
+      setSessionActive(true);
+      setScreen('question');
+    }).catch(err => {
+      alert('Error creating session: ' + err.message);
     });
   };
 
@@ -375,15 +394,23 @@ const NotebookApp = () => {
     
     const cleanRoomName = joinerRoomName.toLowerCase().trim();
 
+    // Disable old session first
+    setSessionActive(false);
+    
     localStorage.setItem('36q-room-name', cleanRoomName);
     localStorage.setItem('36q-user-name', joinerInputName);
     localStorage.setItem('36q-user-role', 'joiner');
     
+    // Clear old state
+    setCurrentQuestionIndex(0);
+    setAnswered(new Set());
+    setConfirmedBy({});
+    setPartnerJoined(false);
+    setUseTimer(false);
+    
     setUserRole('joiner');
-    setRoomName(cleanRoomName);
-    setSessionActive(true);
-    setPartnerJoined(true);
     setJoinerName(joinerInputName);
+    setTimerRemaining(15 * 60);
     
     // Load existing session from Firebase
     const sessionRef = ref(database, `sessions/${cleanRoomName}`);
@@ -395,12 +422,16 @@ const NotebookApp = () => {
         setAnswered(new Set(data.answered || []));
         setConfirmedBy(data.confirmedBy || {});
         setUseTimer(data.useTimer || false);
+        setPartnerJoined(true);
         
         // Update Firebase with joiner's name
         update(sessionRef, {
           joiner: joinerInputName,
           partnerJoined: true,
         });
+        
+        setRoomName(cleanRoomName);
+        setSessionActive(true);
       } else {
         alert('❌ Room not found. Please check the room name and try again.');
         setSessionActive(false);
