@@ -221,7 +221,7 @@ const NotebookApp = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   
   // SESSION STATE
-  const [sessionCode, setSessionCode] = useState('');
+  const [roomName, setRoomName] = useState('');
   const [userName, setUserName] = useState('');
   const [creatorInputName, setCreatorInputName] = useState(''); // Separate input for "I'll Start First"
   const [joinerInputName, setJoinerInputName] = useState(''); // Separate input for "Join Session"
@@ -239,10 +239,10 @@ const NotebookApp = () => {
 
   // Load from Firebase on mount
   useEffect(() => {
-    const sessionCodeLocal = localStorage.getItem('36q-session-code');
-    if (sessionCodeLocal) {
-      setSessionCode(sessionCodeLocal);
-      const sessionRef = ref(database, `sessions/${sessionCodeLocal}`);
+    const roomNameLocal = localStorage.getItem('36q-room-name');
+    if (roomNameLocal) {
+      setRoomName(roomNameLocal);
+      const sessionRef = ref(database, `sessions/${roomNameLocal}`);
       const unsubscribe = onValue(sessionRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
@@ -264,8 +264,8 @@ const NotebookApp = () => {
 
   // Listen to confirmations from Firebase in real-time
   useEffect(() => {
-    if (sessionActive && sessionCode) {
-      const sessionRef = ref(database, `sessions/${sessionCode}`);
+    if (sessionActive && roomName) {
+      const sessionRef = ref(database, `sessions/${roomName}`);
       const unsubscribe = onValue(sessionRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
@@ -281,11 +281,11 @@ const NotebookApp = () => {
       });
       return () => unsubscribe();
     }
-  }, [sessionActive, sessionCode]);
+  }, [sessionActive, roomName]);
 
   // Save to Firebase
   useEffect(() => {
-    if (sessionActive && sessionCode) {
+    if (sessionActive && roomName) {
       const data = {
         currentQuestionIndex,
         answered: Array.from(answered),
@@ -294,27 +294,34 @@ const NotebookApp = () => {
         useTimer,
         updatedAt: new Date().toISOString(),
       };
-      const sessionRef = ref(database, `sessions/${sessionCode}`);
+      const sessionRef = ref(database, `sessions/${roomName}`);
       update(sessionRef, data).catch(err => console.log('Save error:', err));
     }
-  }, [currentQuestionIndex, answered, confirmedBy, sessionActive, sessionCode, partnerJoined, useTimer]);
+  }, [currentQuestionIndex, answered, confirmedBy, sessionActive, roomName, partnerJoined, useTimer]);
 
   const generateSessionCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
   const handleCreateSession = () => {
-    const code = generateSessionCode();
-    localStorage.setItem('36q-session-code', code);
+    if (!roomName.trim()) {
+      alert('Please enter a room name');
+      return;
+    }
+    
+    const cleanRoomName = roomName.toLowerCase().trim();
+    
+    localStorage.setItem('36q-room-name', cleanRoomName);
     localStorage.setItem('36q-user-name', creatorInputName);
     localStorage.setItem('36q-user-role', 'creator');
-    setSessionCode(code);
+    setRoomName(cleanRoomName);
     setUserRole('creator');
-    setCreatorName(creatorInputName); // Store creator's name
+    setCreatorName(creatorInputName);
     setSessionActive(true);
     setScreen('question');
+    
     // Create session in Firebase
-    const sessionRef = ref(database, `sessions/${code}`);
+    const sessionRef = ref(database, `sessions/${cleanRoomName}`);
     set(sessionRef, {
       creator: creatorInputName,
       currentQuestionIndex: 0,
@@ -327,20 +334,25 @@ const NotebookApp = () => {
   };
 
   const handleJoinSession = () => {
-    const trimmedCode = sessionCode.trim().toUpperCase();
+    if (!roomName.trim()) {
+      alert('Please enter the room name');
+      return;
+    }
     
-    localStorage.setItem('36q-session-code', trimmedCode);
+    const cleanRoomName = roomName.toLowerCase().trim();
+
+    localStorage.setItem('36q-room-name', cleanRoomName);
     localStorage.setItem('36q-user-name', joinerInputName);
     localStorage.setItem('36q-user-role', 'joiner');
     
     setUserRole('joiner');
-    setSessionCode(trimmedCode);
+    setRoomName(cleanRoomName);
     setSessionActive(true);
     setPartnerJoined(true);
     setJoinerName(joinerInputName);
     
     // Load existing session from Firebase
-    const sessionRef = ref(database, `sessions/${trimmedCode}`);
+    const sessionRef = ref(database, `sessions/${cleanRoomName}`);
     const unsubscribe = onValue(sessionRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -355,6 +367,9 @@ const NotebookApp = () => {
           joiner: joinerInputName,
           partnerJoined: true,
         });
+      } else {
+        alert('❌ Room not found. Please check the room name and try again.');
+        setSessionActive(false);
       }
     });
     
@@ -386,8 +401,8 @@ const NotebookApp = () => {
     setConfirmedBy(newConfirmedBy);
     
     // SAVE TO FIREBASE IMMEDIATELY
-    if (sessionActive && sessionCode) {
-      const sessionRef = ref(database, `sessions/${sessionCode}`);
+    if (sessionActive && roomName) {
+      const sessionRef = ref(database, `sessions/${roomName}`);
       update(sessionRef, {
         confirmedBy: newConfirmedBy,
       }).catch(err => console.log('Error saving confirmation:', err));
@@ -541,9 +556,21 @@ const NotebookApp = () => {
                 />
               </div>
 
+              <div>
+                <label className="block text-indigo-200 font-semibold mb-2">Room Name (Your Personal Space)</label>
+                <input
+                  type="text"
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value.toLowerCase())}
+                  placeholder="e.g., sorab-priyal"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">Letters, numbers, hyphens only (no spaces)</p>
+              </div>
+
               <button
                 onClick={handleCreateSession}
-                disabled={!creatorInputName}
+                disabled={!creatorInputName || !roomName.trim()}
                 className="w-full px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed"
               >
                 I'll Start First
@@ -565,19 +592,20 @@ const NotebookApp = () => {
                 </div>
 
                 <div>
-                  <label className="block text-indigo-200 font-semibold mb-2">Session Code</label>
+                  <label className="block text-indigo-200 font-semibold mb-2">Room Name</label>
                   <input
                     type="text"
-                    value={sessionCode}
-                    onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
-                    placeholder="e.g., A1B2C3"
-                    className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase text-center text-2xl font-bold tracking-widest"
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value.toLowerCase())}
+                    placeholder="e.g., sorab-priyal"
+                    className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
+                  <p className="text-xs text-gray-400 mt-1">Letters, numbers, hyphens only (no spaces)</p>
                 </div>
 
                 <button
                   onClick={handleJoinSession}
-                  disabled={!joinerInputName || sessionCode.length !== 6}
+                  disabled={!joinerInputName || !roomName.trim()}
                   className="w-full px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed"
                 >
                   Join Session
@@ -602,12 +630,12 @@ const NotebookApp = () => {
           <div className="flex items-center justify-between mb-8">
             <button
               onClick={() => {
-                localStorage.removeItem('36q-session-code');
+                localStorage.removeItem('36q-room-name');
                 localStorage.removeItem('36q-user-name');
                 localStorage.removeItem('36q-user-role');
                 setScreen('intro');
                 setSessionActive(false);
-                setSessionCode('');
+                setRoomName('');
                 setUserName('');
                 setUserRole(null);
               }}
@@ -628,7 +656,7 @@ const NotebookApp = () => {
               {sessionActive && (
                 <div className="flex justify-center gap-6 text-sm text-gray-400 mb-4">
                   <div>👤 {creatorName || 'Creator'} & {joinerName || 'Partner'}</div>
-                  <div>🔐 {sessionCode}</div>
+                  <div>🏠 {roomName}</div>
                 </div>
               )}
             </div>
