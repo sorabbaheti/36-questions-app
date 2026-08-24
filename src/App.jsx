@@ -463,12 +463,12 @@ const NotebookApp = () => {
       newConfirmedBy[questionKey] = [];
     }
     
-    // Get the name stored in localStorage (set when creating/joining)
-    const myName = localStorage.getItem('36q-user-name') || 'Partner';
+    // Get user role
+    const myRole = localStorage.getItem('36q-user-role') || 'creator';
     
-    // Add current user to confirmed list if not already there
-    if (myName && !newConfirmedBy[questionKey].includes(myName)) {
-      newConfirmedBy[questionKey].push(myName);
+    // Add current user's role to confirmed list if not already there
+    if (!newConfirmedBy[questionKey].includes(myRole)) {
+      newConfirmedBy[questionKey].push(myRole);
     }
     
     setConfirmedBy(newConfirmedBy);
@@ -480,18 +480,19 @@ const NotebookApp = () => {
         confirmedBy: newConfirmedBy,
       }).catch(err => console.log('Error saving confirmation:', err));
     }
+  };
+
+  const handleNextQuestion = () => {
+    const questionKey = `q-${currentQuestionIndex}`;
+    const confirmedList = confirmedBy[questionKey] || [];
     
-    // Check if both partners (creator and joiner) have confirmed
-    const hasCreator = newConfirmedBy[questionKey].some(name => name !== '' && name !== null);
-    const hasJoiner = newConfirmedBy[questionKey].length >= 2;
-    
-    // Only proceed if BOTH have confirmed
-    if (!hasJoiner) {
-      // Not ready yet - wait for partner
+    // Check if both have confirmed
+    if (confirmedList.length < 2) {
+      alert('Both partners need to click "I\'m Done" first');
       return;
     }
-    
-    // Both have confirmed! Mark as answered and progress
+
+    // Mark as answered
     const newAnswered = new Set(answered);
     newAnswered.add(currentQuestionIndex);
     setAnswered(newAnswered);
@@ -510,9 +511,9 @@ const NotebookApp = () => {
     if (currentQuestionIndex < QUESTIONS.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       // Reset confirmations for new question
-      const updatedConfirmed = { ...newConfirmedBy };
-      delete updatedConfirmed[questionKey];
-      setConfirmedBy(updatedConfirmed);
+      const newConfirmedBy = { ...confirmedBy };
+      delete newConfirmedBy[questionKey];
+      setConfirmedBy(newConfirmedBy);
       setScreen('question');
     } else {
       setScreen('complete');
@@ -635,7 +636,7 @@ const NotebookApp = () => {
                   type="text"
                   value={creatorRoomName}
                   onChange={(e) => setCreatorRoomName(e.target.value.toLowerCase())}
-                  placeholder="e.g., sorab-priyal"
+                  placeholder="e.g., couple-journey"
                   className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <p className="text-xs text-gray-400 mt-1">Letters, numbers, hyphens only (no spaces)</p>
@@ -670,7 +671,7 @@ const NotebookApp = () => {
                     type="text"
                     value={joinerRoomName}
                     onChange={(e) => setJoinerRoomName(e.target.value.toLowerCase())}
-                    placeholder="e.g., sorab-priyal"
+                    placeholder="e.g., couple-journey"
                     className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <p className="text-xs text-gray-400 mt-1">Letters, numbers, hyphens only (no spaces)</p>
@@ -862,26 +863,36 @@ const NotebookApp = () => {
             <div className="mb-8">
               {(() => {
                 const questionKey = `q-${currentQuestionIndex}`;
-                const confirmedNames = confirmedBy[questionKey] || [];
-                const bothConfirmed = confirmedNames.length >= 2;
+                const confirmedRoles = confirmedBy[questionKey] || [];
+                const bothConfirmed = confirmedRoles.length >= 2;
+                const myRole = localStorage.getItem('36q-user-role') || 'creator';
                 const myName = localStorage.getItem('36q-user-name') || 'You';
-                const partnerNameFromFirebase = userRole === 'creator' ? joinerName : creatorName;
+                const partnerName = myRole === 'creator' ? joinerName || 'Partner' : creatorName || 'Partner';
                 
                 return (
                   <div className={`rounded-xl p-4 border ${bothConfirmed ? 'bg-green-500/20 border-green-500' : 'bg-amber-500/20 border-amber-500'}`}>
                     <p className="font-semibold mb-3 text-white">
                       {bothConfirmed ? '✅ Both Answered!' : '⏳ Waiting for Confirmation'}
                     </p>
-                    <div className="space-y-2 text-sm">
-                      <div className={`flex items-center gap-2 ${confirmedNames.includes(myName) ? 'text-green-200' : 'text-amber-200'}`}>
-                        {confirmedNames.includes(myName) ? '✓' : '○'} You ({myName})
+                    <div className="space-y-2 text-sm mb-4">
+                      <div className={`flex items-center gap-2 ${confirmedRoles.includes(myRole) ? 'text-green-200' : 'text-amber-200'}`}>
+                        {confirmedRoles.includes(myRole) ? '✓' : '○'} You ({myName})
                       </div>
-                      <div className={`flex items-center gap-2 ${confirmedNames.some(n => n !== myName && n) ? 'text-green-200' : 'text-amber-200'}`}>
-                        {confirmedNames.some(n => n !== myName && n) ? '✓' : '○'} Partner ({partnerNameFromFirebase || 'waiting...'})
+                      <div className={`flex items-center gap-2 ${confirmedRoles.includes(myRole === 'creator' ? 'joiner' : 'creator') ? 'text-green-200' : 'text-amber-200'}`}>
+                        {confirmedRoles.includes(myRole === 'creator' ? 'joiner' : 'creator') ? '✓' : '○'} {partnerName}
                       </div>
                     </div>
+                    
+                    {bothConfirmed && (
+                      <button
+                        onClick={handleNextQuestion}
+                        className="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 text-lg"
+                      >
+                        ➜ Next Question
+                      </button>
+                    )}
                     {!bothConfirmed && (
-                      <p className="text-xs text-amber-100 mt-3">
+                      <p className="text-xs text-amber-100">
                         💕 Both partners need to click "I'm Done" before you can continue.
                       </p>
                     )}
