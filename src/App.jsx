@@ -328,26 +328,22 @@ const NotebookApp = () => {
   const handleJoinSession = () => {
     const trimmedCode = sessionCode.trim().toUpperCase();
     
-    // First, check if session exists in Firebase
-    const sessionRef = ref(database, `sessions/${trimmedCode}`);
+    localStorage.setItem('36q-session-code', trimmedCode);
+    localStorage.setItem('36q-user-name', joinerInputName);
+    localStorage.setItem('36q-user-role', 'joiner');
     
-    get(sessionRef).then((snapshot) => {
+    setUserRole('joiner');
+    setSessionCode(trimmedCode);
+    setSessionActive(true);
+    setPartnerJoined(true);
+    setJoinerName(joinerInputName);
+    
+    // Load existing session from Firebase
+    const sessionRef = ref(database, `sessions/${trimmedCode}`);
+    const unsubscribe = onValue(sessionRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        
-        // Session found - set everything up
-        localStorage.setItem('36q-session-code', trimmedCode);
-        localStorage.setItem('36q-user-name', joinerInputName);
-        localStorage.setItem('36q-user-role', 'joiner');
-        
-        setUserRole('joiner');
-        setSessionCode(trimmedCode);
-        setSessionActive(true);
-        setPartnerJoined(true);
-        setJoinerName(joinerInputName);
         setCreatorName(data.creator || '');
-        
-        // Load session data
         setCurrentQuestionIndex(data.currentQuestionIndex || 0);
         setAnswered(new Set(data.answered || []));
         setConfirmedBy(data.confirmedBy || {});
@@ -358,15 +354,11 @@ const NotebookApp = () => {
           joiner: joinerInputName,
           partnerJoined: true,
         });
-        
-        setScreen('question');
-      } else {
-        alert('❌ Session code not found. Please check and try again.');
       }
-    }).catch((error) => {
-      console.log('Error:', error);
-      alert('❌ Error loading session. Please try again.');
     });
+    
+    setScreen('question');
+    return unsubscribe;
   };
 
   const currentQuestion = QUESTIONS[currentQuestionIndex];
