@@ -262,20 +262,21 @@ const NotebookApp = () => {
     }
   }, []);
 
-  // Listen to Firebase whenever sessionCode changes (for User 2 joining)
+  // Listen to confirmations from Firebase in real-time
   useEffect(() => {
-    if (sessionActive && sessionCode && sessionCode.length === 6) {
+    if (sessionActive && sessionCode) {
       const sessionRef = ref(database, `sessions/${sessionCode}`);
       const unsubscribe = onValue(sessionRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
-          setCurrentQuestionIndex(data.currentQuestionIndex || 0);
-          setAnswered(new Set(data.answered || []));
-          setConfirmedBy(data.confirmedBy || {});
-          setPartnerJoined(data.partnerJoined || false);
-          setUseTimer(data.useTimer || false);
-          setCreatorName(data.creator || '');
-          setJoinerName(data.joiner || '');
+          // Update all fields from Firebase
+          if (data.currentQuestionIndex !== undefined) setCurrentQuestionIndex(data.currentQuestionIndex);
+          if (data.answered) setAnswered(new Set(data.answered));
+          if (data.confirmedBy) setConfirmedBy(data.confirmedBy);
+          if (data.partnerJoined !== undefined) setPartnerJoined(data.partnerJoined);
+          if (data.useTimer !== undefined) setUseTimer(data.useTimer);
+          if (data.creator) setCreatorName(data.creator);
+          if (data.joiner) setJoinerName(data.joiner);
         }
       });
       return () => unsubscribe();
@@ -383,6 +384,14 @@ const NotebookApp = () => {
     }
     
     setConfirmedBy(newConfirmedBy);
+    
+    // SAVE TO FIREBASE IMMEDIATELY
+    if (sessionActive && sessionCode) {
+      const sessionRef = ref(database, `sessions/${sessionCode}`);
+      update(sessionRef, {
+        confirmedBy: newConfirmedBy,
+      }).catch(err => console.log('Error saving confirmation:', err));
+    }
     
     // Check if both partners (creator and joiner) have confirmed
     const hasCreator = newConfirmedBy[questionKey].some(name => name !== '' && name !== null);
@@ -731,6 +740,7 @@ const NotebookApp = () => {
                 const confirmedNames = confirmedBy[questionKey] || [];
                 const bothConfirmed = confirmedNames.length >= 2;
                 const myName = localStorage.getItem('36q-user-name') || 'You';
+                const partnerNameFromFirebase = userRole === 'creator' ? joinerName : creatorName;
                 
                 return (
                   <div className={`rounded-xl p-4 border ${bothConfirmed ? 'bg-green-500/20 border-green-500' : 'bg-amber-500/20 border-amber-500'}`}>
@@ -741,8 +751,8 @@ const NotebookApp = () => {
                       <div className={`flex items-center gap-2 ${confirmedNames.includes(myName) ? 'text-green-200' : 'text-amber-200'}`}>
                         {confirmedNames.includes(myName) ? '✓' : '○'} You ({myName})
                       </div>
-                      <div className={`flex items-center gap-2 ${confirmedNames.length >= 2 && !confirmedNames.includes(myName) ? 'text-green-200' : 'text-amber-200'}`}>
-                        {confirmedNames.length >= 2 && !confirmedNames.includes(myName) ? '✓' : '○'} Your Partner ({creatorName && joinerName ? (userRole === 'creator' ? joinerName : creatorName) : 'waiting...'})
+                      <div className={`flex items-center gap-2 ${confirmedNames.some(n => n !== myName && n) ? 'text-green-200' : 'text-amber-200'}`}>
+                        {confirmedNames.some(n => n !== myName && n) ? '✓' : '○'} Partner ({partnerNameFromFirebase || 'waiting...'})
                       </div>
                     </div>
                     {!bothConfirmed && (
