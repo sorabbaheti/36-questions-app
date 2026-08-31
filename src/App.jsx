@@ -176,6 +176,7 @@ const NotebookApp = () => {
   const [joinName, setJoinName] = useState('');
   const [joinRoom, setJoinRoom] = useState('');
   const [joinError, setJoinError] = useState('');
+  const [roomChoice, setRoomChoice] = useState(null); // { room, creator, joiner } when an existing room needs a "who are you?" choice
   const [busy, setBusy] = useState(false);
 
   // --- Local-only UI state ---
@@ -271,7 +272,16 @@ const NotebookApp = () => {
     const name = createName.trim();
     if (!name || !room) return;
     setBusy(true);
+    setJoinError('');
     try {
+      // Don't clobber a room that already exists — offer to join it instead.
+      const existing = await get(ref(database, `sessions/${room}`));
+      if (existing.exists()) {
+        const d = existing.val();
+        setRoomChoice({ room, creator: d.creator || '', joiner: d.joiner || '' });
+        setBusy(false);
+        return;
+      }
       // Fresh session. progress is empty — every question starts clean.
       await set(ref(database, `sessions/${room}`), {
         creator: name,
@@ -293,10 +303,10 @@ const NotebookApp = () => {
     }
   };
 
-  const joinSession = async () => {
+  // Step 1: look up the room and decide what to show.
+  const lookupRoom = async () => {
     const room = cleanRoom(joinRoom);
-    const name = joinName.trim();
-    if (!name || !room) return;
+    if (!room) return;
     setBusy(true);
     setJoinError('');
     try {
@@ -306,17 +316,52 @@ const NotebookApp = () => {
         setBusy(false);
         return;
       }
-      await update(ref(database, `sessions/${room}`), { joiner: name });
-      localStorage.setItem(STORAGE.room, room);
+      const d = snap.val();
+      // Existing room → let them pick who they are instead of overwriting a slot.
+      setRoomChoice({ room, creator: d.creator || '', joiner: d.joiner || '' });
+    } catch (e) {
+      setJoinError('Could not reach that room. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Step 2a: resume as an existing participant WITHOUT rewriting their name/role.
+  const continueAs = (role) => {
+    if (!roomChoice) return;
+    const room = roomChoice.room;
+    const name = role === 'creator' ? roomChoice.creator : roomChoice.joiner;
+    localStorage.setItem(STORAGE.room, room);
+    localStorage.setItem(STORAGE.role, role);
+    localStorage.setItem(STORAGE.name, name);
+    setIdentity({ room, role, name });
+    setRoomChoice(null);
+  };
+
+  // Step 2b: take the empty partner slot as a brand-new person.
+  const joinAsNewPartner = async () => {
+    if (!roomChoice) return;
+    const name = joinName.trim();
+    if (!name) {
+      setJoinError('Please type your name above to join as the partner.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await update(ref(database, `sessions/${roomChoice.room}`), { joiner: name });
+      localStorage.setItem(STORAGE.room, roomChoice.room);
       localStorage.setItem(STORAGE.role, 'joiner');
       localStorage.setItem(STORAGE.name, name);
-      setIdentity({ room, role: 'joiner', name });
+      setIdentity({ room: roomChoice.room, role: 'joiner', name });
+      setRoomChoice(null);
     } catch (e) {
       setJoinError('Could not join the room. Please try again.');
     } finally {
       setBusy(false);
     }
   };
+
+  const cancelChoice = () => { setRoomChoice(null); setJoinError(''); };
 
   const toggleMyDone = () => {
     if (!inSession) return;
@@ -516,33 +561,82 @@ const NotebookApp = () => {
 
             {/* JOIN */}
             <div className="bg-slate-800/40 rounded-xl p-4 space-y-4">
-              <p className="text-white font-semibold flex items-center gap-2">🔗 Join your partner's room</p>
-              <div>
-                <label className="block text-indigo-200 text-sm font-semibold mb-1">Your name</label>
-                <input
-                  value={joinName}
-                  onChange={(e) => setJoinName(e.target.value)}
-                  placeholder="e.g., Sam"
-                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500/60 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-indigo-200 text-sm font-semibold mb-1">Room name</label>
-                <input
-                  value={joinRoom}
-                  onChange={(e) => { setJoinRoom(e.target.value.toLowerCase()); setJoinError(''); }}
-                  placeholder="the exact name your partner made"
-                  className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500/60 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
-                />
-              </div>
-              {joinError && <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/40 rounded-lg p-2">{joinError}</p>}
-              <button
-                onClick={joinSession}
-                disabled={busy || !joinName.trim() || !joinRoom.trim()}
-                className="w-full px-6 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:opacity-50 text-white font-bold text-lg rounded-xl transition-all shadow-lg"
-              >
-                Join room
-              </button>
+              <p className="text-white font-semibold flex items-center gap-2">🔗 Join or rejoin a room</p>
+
+              {!roomChoice ? (
+                <>
+                  <div>
+                    <label className="block text-indigo-200 text-sm font-semibold mb-1">Room name</label>
+                    <input
+                      value={joinRoom}
+                      onChange={(e) => { setJoinRoom(e.target.value.toLowerCase()); setJoinError(''); }}
+                      placeholder="the exact name your partner made"
+                      className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500/60 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-indigo-200 text-sm font-semibold mb-1">Your name <span className="text-gray-400 font-normal">(only if you're joining brand new)</span></label>
+                    <input
+                      value={joinName}
+                      onChange={(e) => setJoinName(e.target.value)}
+                      placeholder="e.g., Sam"
+                      className="w-full px-4 py-3 rounded-lg bg-slate-700 border border-indigo-500/60 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
+                    />
+                  </div>
+                  {joinError && <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/40 rounded-lg p-2">{joinError}</p>}
+                  <button
+                    onClick={lookupRoom}
+                    disabled={busy || !joinRoom.trim()}
+                    className="w-full px-6 py-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:opacity-50 text-white font-bold text-lg rounded-xl transition-all shadow-lg"
+                  >
+                    Continue
+                  </button>
+                </>
+              ) : (
+                // CHOOSER: room already exists — pick who you are, don't overwrite.
+                <div className="space-y-3">
+                  <p className="text-indigo-100 text-sm">
+                    Room <strong className="text-white">"{roomChoice.room}"</strong> is already going. Who are you?
+                  </p>
+
+                  {roomChoice.creator && (
+                    <button
+                      onClick={() => continueAs('creator')}
+                      className="w-full text-left px-4 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 border border-indigo-500/40 transition"
+                    >
+                      <span className="text-white font-semibold">Continue as {roomChoice.creator}</span>
+                      <span className="block text-xs text-gray-400">started this room</span>
+                    </button>
+                  )}
+
+                  {roomChoice.joiner && (
+                    <button
+                      onClick={() => continueAs('joiner')}
+                      className="w-full text-left px-4 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 border border-indigo-500/40 transition"
+                    >
+                      <span className="text-white font-semibold">Continue as {roomChoice.joiner}</span>
+                      <span className="block text-xs text-gray-400">joined as the partner</span>
+                    </button>
+                  )}
+
+                  {!roomChoice.joiner && (
+                    <button
+                      onClick={joinAsNewPartner}
+                      disabled={busy}
+                      className="w-full text-left px-4 py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:opacity-50 transition"
+                    >
+                      <span className="text-white font-semibold">Join as the partner{joinName.trim() ? ` (${joinName.trim()})` : ''}</span>
+                      <span className="block text-xs text-indigo-100">this room is waiting for a second person</span>
+                    </button>
+                  )}
+
+                  {joinError && <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/40 rounded-lg p-2">{joinError}</p>}
+
+                  <button onClick={cancelChoice} className="w-full px-4 py-2 text-gray-400 hover:text-white text-sm transition">
+                    ← back
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
